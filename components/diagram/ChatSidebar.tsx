@@ -10,20 +10,65 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Send,
-  Sparkles,
   Layers,
   RotateCcw,
   Maximize2,
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Bot,
   User,
   ArrowRight,
   Lightbulb,
   AlertCircle,
   FileCode2,
 } from "lucide-react";
+
+function DiaIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="6" cy="6" r="3" className="fill-blue-600 stroke-blue-600" />
+      <circle
+        cx="18"
+        cy="6"
+        r="3"
+        className="fill-indigo-600 stroke-indigo-600"
+      />
+      <circle cx="12" cy="18" r="3" className="fill-sky-500 stroke-sky-500" />
+      <line
+        x1="8.5"
+        y1="7"
+        x2="15.5"
+        y2="7"
+        className="stroke-current opacity-60"
+        strokeWidth="1.75"
+      />
+      <line
+        x1="7.5"
+        y1="8.5"
+        x2="10.5"
+        y2="15.5"
+        className="stroke-current opacity-60"
+        strokeWidth="1.75"
+      />
+      <line
+        x1="16.5"
+        y1="8.5"
+        x2="13.5"
+        y2="15.5"
+        className="stroke-current opacity-60"
+        strokeWidth="1.75"
+      />
+    </svg>
+  );
+}
 
 interface ChatMessage {
   id: string;
@@ -141,7 +186,10 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
   useEffect(() => {
     if (currentDiagram) {
       try {
-        localStorage.setItem(DIAGRAM_STORAGE_KEY, JSON.stringify(currentDiagram));
+        localStorage.setItem(
+          DIAGRAM_STORAGE_KEY,
+          JSON.stringify(currentDiagram),
+        );
       } catch (e) {
         console.warn("Failed to save diagram to storage:", e);
       }
@@ -187,10 +235,12 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
     if (!excalidrawAPI) return;
     const elements = excalidrawAPI.getSceneElements();
     if (elements.length > 0) {
-      excalidrawAPI.scrollToContent(elements, { fitToViewport: true, animate: true });
+      excalidrawAPI.scrollToContent(elements, {
+        fitToViewport: true,
+        animate: true,
+      });
     }
   };
-
 
   const handleSubmit = async (customPrompt?: string) => {
     const textToSend = (customPrompt || input).trim();
@@ -238,14 +288,20 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
       const generatedDiagram: Diagram = data.diagram;
       setCurrentDiagram(generatedDiagram);
 
-      setStatusMessage("Rendering hand-drawn Excalidraw elements & info card...");
+      setStatusMessage(
+        "Rendering hand-drawn Excalidraw elements & info card...",
+      );
 
       let layout: LayoutedDiagram | undefined;
       if (excalidrawAPI) {
-        layout = await renderDiagramToExcalidraw(excalidrawAPI, generatedDiagram, {
-          clearCanvas: clearOnNew,
-          animate: true,
-        });
+        layout = await renderDiagramToExcalidraw(
+          excalidrawAPI,
+          generatedDiagram,
+          {
+            clearCanvas: clearOnNew,
+            animate: true,
+          },
+        );
       }
 
       const assistantMessage: ChatMessage = {
@@ -262,7 +318,9 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(err.message || "An unexpected error occurred. Please try again.");
+      setErrorMessage(
+        err.message || "An unexpected error occurred. Please try again.",
+      );
     } finally {
       setIsLoading(false);
       setStatusMessage("");
@@ -278,21 +336,24 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
 
   const handleReFocus = async (diagram?: Diagram) => {
     if (!excalidrawAPI || !diagram) return;
-    await renderDiagramToExcalidraw(excalidrawAPI, diagram, { clearCanvas: true, animate: true });
+    await renderDiagramToExcalidraw(excalidrawAPI, diagram, {
+      clearCanvas: true,
+      animate: true,
+    });
   };
 
   return (
     <>
-      {/* Floating Toggle Button when Sidebar is closed */}
+      {/* Floating Dia Toggle Button when Sidebar is closed */}
       {!isOpen && (
-        <Button
+        <button
           onClick={() => setIsOpen(true)}
-          className="fixed top-4 left-4 z-40 shadow-xl bg-zinc-900/90 text-white hover:bg-zinc-800 backdrop-blur-md border border-zinc-700/50 flex items-center gap-2 px-3.5 py-2.5 rounded-xl transition-all"
+          title="Open Dia"
+          className="fixed top-4 left-14 z-40 group  bg-white/95 dark:bg-zinc-900/95 text-zinc-900 dark:text-zinc-100 hover:bg-white dark:hover:bg-zinc-900 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 flex items-center gap-2.5 px-3 py-2 rounded-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
-          <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-          <span className="font-semibold text-xs tracking-wide">AI Excalidraw Architect</span>
-          <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
-        </Button>
+          <span className="font-semibold text-xs tracking-tight">Dia</span>
+          <ChevronRight className="w-3.5 h-3.5 text-zinc-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
+        </button>
       )}
 
       {/* Main Sidebar Container */}
@@ -302,21 +363,20 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
         }`}
       >
         {/* Header */}
-        <header className="p-4 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
+        <header className="p-3.5 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between bg-zinc-50/70 dark:bg-zinc-900/70 backdrop-blur-sm">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-500/20 to-indigo-500/20 border border-blue-500/30 text-blue-600 dark:text-blue-400">
-              <Sparkles className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm shadow-blue-500/20">
+              <DiaIcon className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-sm tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                Excalidraw Architect
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-500/40 text-blue-600 dark:text-blue-400">
-                  GPT-OSS 120B
-                </Badge>
-              </h1>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Natural language to hand-drawn Excalidraw
-              </p>
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-bold text-sm tracking-tight text-zinc-900 dark:text-zinc-100">
+                  Dia
+                </h1>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  AI Architect
+                </span>
+              </div>
             </div>
           </div>
 
@@ -355,14 +415,15 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
         <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
           {messages.length === 0 ? (
             <div className="py-4 space-y-4">
-              <div className="p-4 rounded-2xl bg-zinc-100/70 dark:bg-zinc-900/70 border border-zinc-200/60 dark:border-zinc-800/60 space-y-2">
-                <div className="flex items-center gap-2 text-zinc-800 dark:text-zinc-200 font-semibold">
-                  <Lightbulb className="w-4 h-4 text-amber-500" />
-                  <span>Interactive Whiteboard & Cheat-Sheet</span>
+              <div className="p-3.5 rounded-2xl bg-gradient-to-b from-blue-50/60 to-zinc-50 dark:from-blue-950/20 dark:to-zinc-900/60 border border-blue-100/80 dark:border-blue-900/30 space-y-2">
+                <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-xs">
+                  <Lightbulb className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Interactive Architecture Whiteboard</span>
                 </div>
                 <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-[11px]">
-                  Describe any engineering architecture, protocol, or workflow. The AI will draw clean, hand-drawn
-                  Excalidraw shapes, labeled connections, grouped zones, and a dedicated **Side Information & Commands Box**.
+                  Describe any engineering flow, infrastructure, or technical
+                  concept. Dia will create clean, hand-drawn whiteboard diagrams
+                  with verified arrow routing and practical command references.
                 </p>
               </div>
 
@@ -407,8 +468,12 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
                     </>
                   ) : (
                     <>
-                      <Bot className="w-3 h-3 text-blue-500" />
-                      <span>Excalidraw Architect</span>
+                      <div className="w-3.5 h-3.5 rounded-md bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white">
+                        <DiaIcon className="w-2.5 h-2.5 text-white" />
+                      </div>
+                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                        Dia
+                      </span>
                     </>
                   )}
                 </div>
@@ -425,16 +490,25 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
                   {msg.diagram && (
                     <div className="mt-3 pt-2.5 border-t border-zinc-200/50 dark:border-zinc-800/50 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px] gap-1 px-2 py-0.5">
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] gap-1 px-2 py-0.5"
+                        >
                           <Layers className="w-3 h-3" />
                           {msg.diagram.nodes.length} Nodes
                         </Badge>
-                        <Badge variant="secondary" className="text-[10px] gap-1 px-2 py-0.5">
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] gap-1 px-2 py-0.5"
+                        >
                           <ArrowRight className="w-3 h-3" />
                           {msg.diagram.connections.length} Arrows
                         </Badge>
                         {msg.diagram.infoBox && (
-                          <Badge variant="secondary" className="text-[10px] gap-1 px-2 py-0.5 text-blue-600 dark:text-blue-400">
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] gap-1 px-2 py-0.5 text-blue-600 dark:text-blue-400"
+                          >
                             <FileCode2 className="w-3 h-3" />
                             Commands
                           </Badge>
@@ -451,21 +525,28 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
                       </div>
 
                       {/* Inline InfoBox Items */}
-                      {msg.diagram.infoBox && msg.diagram.infoBox.items.length > 0 && (
-                        <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 space-y-1">
-                          <div className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1">
-                            <FileCode2 className="w-3 h-3" />
-                            {msg.diagram.infoBox.title || "Quick Reference"}
+                      {msg.diagram.infoBox &&
+                        msg.diagram.infoBox.items.length > 0 && (
+                          <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 space-y-1">
+                            <div className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                              <FileCode2 className="w-3 h-3" />
+                              {msg.diagram.infoBox.title || "Quick Reference"}
+                            </div>
+                            <ul className="space-y-0.5">
+                              {msg.diagram.infoBox.items.map(
+                                (item: string, i: number) => (
+                                  <li
+                                    key={i}
+                                    className="text-[10px] text-blue-900 dark:text-blue-200 font-mono leading-relaxed"
+                                  >
+                                    <span className="text-blue-500">•</span>{" "}
+                                    {item}
+                                  </li>
+                                ),
+                              )}
+                            </ul>
                           </div>
-                          <ul className="space-y-0.5">
-                            {msg.diagram.infoBox.items.map((item: string, i: number) => (
-                              <li key={i} className="text-[10px] text-blue-900 dark:text-blue-200 font-mono leading-relaxed">
-                                <span className="text-blue-500">•</span> {item}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                        )}
                     </div>
                   )}
                 </div>
@@ -478,7 +559,7 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
             <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 flex items-center gap-2.5 animate-pulse">
               <Spinner className="w-4 h-4 text-blue-500" />
               <div className="text-[11px] font-medium">
-                {statusMessage || "Architecting your Excalidraw diagram..."}
+                {statusMessage || "Dia is architecting your diagram..."}
               </div>
             </div>
           )}
@@ -488,7 +569,9 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
             <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-300 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
               <div className="space-y-1">
-                <div className="font-semibold text-[11px]">Generation Failed</div>
+                <div className="font-semibold text-[11px]">
+                  Generation Failed
+                </div>
                 <p className="text-[10px] leading-relaxed">{errorMessage}</p>
                 <Button
                   size="xs"
@@ -509,15 +592,15 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
         <footer className="p-3 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/70 space-y-2">
           {/* Clear Canvas Toggle */}
           <div className="flex items-center gap-2 px-1">
-            <label className="flex items-center gap-1.5 cursor-pointer select-none group">
+            <label className="flex items-center gap-2 cursor-pointer select-none group">
               <input
                 type="checkbox"
                 checked={clearOnNew}
                 onChange={(e) => handleToggleClearOnNew(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-zinc-400 text-blue-600 focus:ring-blue-500/50 cursor-pointer"
+                className="w-3.5 h-3.5 rounded border-zinc-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
               />
-              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
-                Clear canvas before new diagram
+              <span className="text-[11px] text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-200 transition-colors">
+                Remove existing diagram when creating new
               </span>
             </label>
           </div>
@@ -528,7 +611,7 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe what to draw on Excalidraw..."
+              placeholder="Describe what to design with Dia..."
               className="resize-none min-h-[70px] max-h-[160px] border-0 bg-transparent text-xs p-2.5 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-zinc-400"
               disabled={isLoading}
             />
@@ -542,7 +625,11 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
                 disabled={!input.trim() || isLoading}
                 className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm disabled:opacity-40 transition-all"
               >
-                {isLoading ? <Spinner className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
+                {isLoading ? (
+                  <Spinner className="w-3.5 h-3.5" />
+                ) : (
+                  <Send className="w-3.5 h-3.5" />
+                )}
               </Button>
             </div>
           </div>
