@@ -66,6 +66,40 @@ const EXAMPLE_PROMPTS = [
   },
 ];
 
+const CHAT_STORAGE_KEY = "aidraw_chat_messages";
+const DIAGRAM_STORAGE_KEY = "aidraw_current_diagram";
+const CLEAR_ON_NEW_KEY = "aidraw_clear_on_new";
+
+function getSavedMessages(): ChatMessage[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.map((m: any) => ({
+          ...m,
+          timestamp: new Date(m.timestamp),
+        }));
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to load chat messages from storage:", e);
+  }
+  return [];
+}
+
+function getSavedDiagram(): Diagram | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(DIAGRAM_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn("Failed to load current diagram from storage:", e);
+  }
+  return null;
+}
+
 export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [input, setInput] = useState("");
@@ -74,7 +108,45 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentDiagram, setCurrentDiagram] = useState<Diagram | null>(null);
-  const [clearOnNew, setClearOnNew] = useState(true);
+  const [clearOnNew, setClearOnNew] = useState(false);
+
+  // Restore messages and current diagram from localStorage on mount
+  useEffect(() => {
+    const savedMsgs = getSavedMessages();
+    if (savedMsgs.length > 0) setMessages(savedMsgs);
+
+    const savedDiag = getSavedDiagram();
+    if (savedDiag) setCurrentDiagram(savedDiag);
+
+    try {
+      const savedClearPref = localStorage.getItem(CLEAR_ON_NEW_KEY);
+      if (savedClearPref !== null) setClearOnNew(savedClearPref === "true");
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // Save chat messages to localStorage
+  useEffect(() => {
+    if (messages.length > 0) {
+      try {
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+      } catch (e) {
+        console.warn("Failed to save chat messages to storage:", e);
+      }
+    }
+  }, [messages]);
+
+  // Save current diagram context to localStorage
+  useEffect(() => {
+    if (currentDiagram) {
+      try {
+        localStorage.setItem(DIAGRAM_STORAGE_KEY, JSON.stringify(currentDiagram));
+      } catch (e) {
+        console.warn("Failed to save diagram to storage:", e);
+      }
+    }
+  }, [currentDiagram]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -91,6 +163,24 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
     if (!excalidrawAPI) return;
     excalidrawAPI.resetScene();
     setCurrentDiagram(null);
+    setMessages([]);
+    try {
+      localStorage.removeItem("aidraw_canvas_elements");
+      localStorage.removeItem("aidraw_canvas_appstate");
+      localStorage.removeItem(CHAT_STORAGE_KEY);
+      localStorage.removeItem(DIAGRAM_STORAGE_KEY);
+    } catch (e) {
+      console.warn("Failed to clear storage:", e);
+    }
+  };
+
+  const handleToggleClearOnNew = (checked: boolean) => {
+    setClearOnNew(checked);
+    try {
+      localStorage.setItem(CLEAR_ON_NEW_KEY, String(checked));
+    } catch (e) {
+      // ignore
+    }
   };
 
   const handleFitCanvas = () => {
@@ -100,6 +190,7 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
       excalidrawAPI.scrollToContent(elements, { fitToViewport: true, animate: true });
     }
   };
+
 
   const handleSubmit = async (customPrompt?: string) => {
     const textToSend = (customPrompt || input).trim();
@@ -422,7 +513,7 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
               <input
                 type="checkbox"
                 checked={clearOnNew}
-                onChange={(e) => setClearOnNew(e.target.checked)}
+                onChange={(e) => handleToggleClearOnNew(e.target.checked)}
                 className="w-3.5 h-3.5 rounded border-zinc-400 text-blue-600 focus:ring-blue-500/50 cursor-pointer"
               />
               <span className="text-[10px] text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
