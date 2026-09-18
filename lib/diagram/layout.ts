@@ -1,5 +1,6 @@
 import {
   Diagram,
+  DiagramAnnotation,
   LayoutedAnnotation,
   LayoutedDiagram,
   LayoutedGroup,
@@ -14,11 +15,81 @@ interface LayoutOptions {
   gapY?: number;
 }
 
+interface BoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Check if two bounding boxes overlap (with optional padding).
+ */
+function boxesOverlap(a: BoundingBox, b: BoundingBox, padding = 0): boolean {
+  return (
+    a.x - padding < b.x + b.width &&
+    a.x + a.width + padding > b.x &&
+    a.y - padding < b.y + b.height &&
+    a.y + a.height + padding > b.y
+  );
+}
+
+/**
+ * Compute realistic text-based dimensions for a node.
+ * Measures title + subtitle text length and ensures no overflow.
+ */
+function computeNodeDimensions(
+  title: string,
+  subtitle?: string,
+  shape?: string
+): { width: number; height: number } {
+  // Base dimensions — generous defaults
+  let width = 280;
+  let height = 110;
+
+  // Scale width based on longest text line
+  const titleLen = title.length;
+  const subLen = subtitle ? subtitle.length : 0;
+  const maxTextLen = Math.max(titleLen, subLen);
+
+  // ~9px per character at font-size 14-15, plus padding
+  const textWidth = maxTextLen * 9 + 60;
+  width = Math.max(width, Math.min(420, textWidth));
+
+  // If subtitle exists, add vertical space
+  if (subtitle) {
+    height = 130;
+  }
+
+  // Shape-specific minimum dimensions
+  switch (shape) {
+    case "cloud":
+      width = Math.max(width, 300);
+      height = Math.max(height, 140);
+      break;
+    case "ellipse":
+      // Ellipses need extra space because text is inscribed
+      width = Math.max(width, 280);
+      height = Math.max(height, 130);
+      break;
+    case "diamond":
+      // Diamonds need even more space — text is inscribed in a rotated square
+      width = Math.max(width, 260);
+      height = Math.max(height, 160);
+      break;
+    case "rounded":
+      width = Math.max(width, 280);
+      break;
+  }
+
+  return { width, height };
+}
+
 export function computeDiagramLayout(
   diagram: Diagram,
   options: LayoutOptions = {}
 ): LayoutedDiagram {
-  const { startX = 140, startY = 180, gapX = 300, gapY = 200 } = options;
+  const { startX = 160, startY = 200, gapX = 380, gapY = 260 } = options;
 
   const nodeMap = new Map<string, LayoutedNode>();
   const nodes = diagram.nodes || [];
@@ -26,43 +97,24 @@ export function computeDiagramLayout(
   const groups = diagram.groups || [];
   const annotations = diagram.annotations || [];
 
-  // 1. Calculate realistic dimensions for each node based on text length
+  // ──────────────────────────────────────────────────────────
+  // 1. Calculate realistic dimensions for each node
+  // ──────────────────────────────────────────────────────────
   nodes.forEach((n) => {
-    let width = 240;
-    let height = 100;
-
-    const titleLen = n.title.length;
-    const subLen = n.subtitle ? n.subtitle.length : 0;
-    const maxLen = Math.max(titleLen, subLen);
-
-    if (maxLen > 16) {
-      width = Math.min(340, 240 + (maxLen - 16) * 6);
-    }
-    if (n.subtitle) {
-      height = 110;
-    }
-
-    if (n.shape === "cloud") {
-      width = Math.max(width, 250);
-      height = Math.max(height, 125);
-    } else if (n.shape === "ellipse") {
-      width = Math.max(width, 230);
-      height = Math.max(height, 110);
-    } else if (n.shape === "diamond") {
-      width = Math.max(width, 190);
-      height = Math.max(height, 130);
-    }
+    const dims = computeNodeDimensions(n.title, n.subtitle, n.shape);
 
     nodeMap.set(n.id, {
       ...n,
       x: n.x ?? 0,
       y: n.y ?? 0,
-      width: n.width ?? width,
-      height: n.height ?? height,
+      width: n.width ?? dims.width,
+      height: n.height ?? dims.height,
     });
   });
 
-  // 2. Build adjacency graph to find topological layers / flow order
+  // ──────────────────────────────────────────────────────────
+  // 2. Build adjacency graph for topological layer assignment
+  // ──────────────────────────────────────────────────────────
   const outgoing = new Map<string, string[]>();
   const incoming = new Map<string, string[]>();
   const inDegree = new Map<string, number>();
@@ -81,7 +133,9 @@ export function computeDiagramLayout(
     }
   });
 
-  // 3. Assign layers (rank) using BFS / longest path from roots
+  // ──────────────────────────────────────────────────────────
+  // 3. Assign layers using longest-path BFS from roots
+  // ──────────────────────────────────────────────────────────
   const nodeLayer = new Map<string, number>();
   const queue: string[] = [];
 
@@ -93,13 +147,13 @@ export function computeDiagramLayout(
     }
   });
 
-  // Fallback if there are cycles or no inDegree === 0 nodes
+  // Fallback if all nodes are in a cycle
   if (queue.length === 0 && nodes.length > 0) {
     queue.push(nodes[0].id);
     nodeLayer.set(nodes[0].id, 0);
   }
 
-  // BFS / topological layer assignment
+  // BFS topological layer assignment (longest path variant)
   const visited = new Set<string>();
   while (queue.length > 0) {
     const currId = queue.shift()!;
@@ -118,7 +172,7 @@ export function computeDiagramLayout(
     }
   }
 
-  // Assign layers to any disconnected / remaining nodes
+  // Assign layers to any disconnected/remaining nodes
   let maxLayerSoFar = 0;
   nodeLayer.forEach((layer) => {
     if (layer > maxLayerSoFar) maxLayerSoFar = layer;
@@ -131,7 +185,9 @@ export function computeDiagramLayout(
     }
   });
 
+  // ──────────────────────────────────────────────────────────
   // 4. Group nodes by layer
+  // ──────────────────────────────────────────────────────────
   const layersMap = new Map<number, string[]>();
   nodeLayer.forEach((layer, id) => {
     if (!layersMap.has(layer)) {
@@ -142,10 +198,13 @@ export function computeDiagramLayout(
 
   const sortedLayerIndices = Array.from(layersMap.keys()).sort((a, b) => a - b);
 
-  // 5. Position nodes with wide spacing and vertical alignment
+  // ──────────────────────────────────────────────────────────
+  // 5. Position nodes with generous spacing
+  // ──────────────────────────────────────────────────────────
   const layoutMode = diagram.layout || "horizontal";
 
   if (layoutMode === "vertical") {
+    // Vertical: layers go top-to-bottom, nodes within a layer are side-by-side
     let currentY = startY;
     sortedLayerIndices.forEach((layerIdx) => {
       const layerNodeIds = layersMap.get(layerIdx)!;
@@ -155,7 +214,8 @@ export function computeDiagramLayout(
       });
       totalWidth += (layerNodeIds.length - 1) * gapX;
 
-      let currentX = startX - totalWidth / 2;
+      // Center the layer horizontally around startX
+      let currentX = startX + 200 - totalWidth / 2;
       let maxHeightInLayer = 0;
 
       layerNodeIds.forEach((id) => {
@@ -172,6 +232,7 @@ export function computeDiagramLayout(
     // Horizontal / Layered (Left-to-Right)
     let currentX = startX;
 
+    // Pre-calculate the tallest layer to vertically center all layers
     let maxLayerHeight = 0;
     sortedLayerIndices.forEach((layerIdx) => {
       const layerNodeIds = layersMap.get(layerIdx)!;
@@ -189,6 +250,7 @@ export function computeDiagramLayout(
         layerNodeIds.reduce((sum, id) => sum + nodeMap.get(id)!.height, 0) +
         (layerNodeIds.length - 1) * gapY;
 
+      // Center this layer vertically relative to the tallest layer
       let currentY = startY + Math.max(0, (maxLayerHeight - layerTotalHeight) / 2);
 
       layerNodeIds.forEach((id) => {
@@ -205,7 +267,43 @@ export function computeDiagramLayout(
 
   const layoutedNodes = Array.from(nodeMap.values());
 
-  // 6. Calculate Group Bounding Boxes
+  // ──────────────────────────────────────────────────────────
+  // 6. Post-layout collision sweep for nodes
+  //    Nudge any overlapping nodes apart
+  // ──────────────────────────────────────────────────────────
+  const COLLISION_PADDING = 40;
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = 0; i < layoutedNodes.length; i++) {
+      for (let j = i + 1; j < layoutedNodes.length; j++) {
+        const a = layoutedNodes[i];
+        const b = layoutedNodes[j];
+
+        if (
+          boxesOverlap(
+            { x: a.x, y: a.y, width: a.width, height: a.height },
+            { x: b.x, y: b.y, width: b.width, height: b.height },
+            COLLISION_PADDING
+          )
+        ) {
+          // Push the later node down/right
+          if (layoutMode === "vertical") {
+            b.y = a.y + a.height + gapY;
+          } else {
+            // If same layer (similar X), push down. Otherwise push right.
+            if (Math.abs(a.x - b.x) < a.width) {
+              b.y = a.y + a.height + gapY;
+            } else {
+              b.x = a.x + a.width + gapX;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // 7. Calculate Group Bounding Boxes with generous padding
+  // ──────────────────────────────────────────────────────────
   const layoutedGroups: LayoutedGroup[] = [];
   groups.forEach((g) => {
     const memberNodes = g.nodeIds
@@ -218,9 +316,9 @@ export function computeDiagramLayout(
       const maxX = Math.max(...memberNodes.map((n) => n.x + n.width));
       const maxY = Math.max(...memberNodes.map((n) => n.y + n.height));
 
-      const paddingX = 45;
-      const paddingTop = 60;
-      const paddingBottom = 40;
+      const paddingX = 60;
+      const paddingTop = 80;
+      const paddingBottom = 55;
 
       layoutedGroups.push({
         ...g,
@@ -232,40 +330,9 @@ export function computeDiagramLayout(
     }
   });
 
-  // 7. Calculate Callout Notes in Clean Whitespace Gutters
-  const layoutedAnnotations: LayoutedAnnotation[] = [];
-  annotations.forEach((ann, idx) => {
-    const annWidth = Math.min(Math.max(ann.text.length * 7 + 40, 200), 320);
-    const annHeight = 65;
-
-    let annX = startX;
-    let annY = startY - 110;
-
-    if (ann.targetNodeId && nodeMap.has(ann.targetNodeId)) {
-      const target = nodeMap.get(ann.targetNodeId)!;
-      // Position above or below with plenty of vertical clearance
-      if (target.y <= startY + 50) {
-        annX = target.x + (target.width - annWidth) / 2;
-        annY = target.y - annHeight - 30;
-      } else {
-        annX = target.x + (target.width - annWidth) / 2;
-        annY = target.y + target.height + 30;
-      }
-    } else {
-      annX = startX + idx * 320;
-      annY = startY - 120;
-    }
-
-    layoutedAnnotations.push({
-      ...ann,
-      x: annX,
-      y: annY,
-      width: annWidth,
-      height: annHeight,
-    });
-  });
-
-  // 8. Compute total bounds of nodes, groups, annotations
+  // ──────────────────────────────────────────────────────────
+  // 8. Compute total bounds of nodes + groups
+  // ──────────────────────────────────────────────────────────
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -285,13 +352,6 @@ export function computeDiagramLayout(
     if (g.y + g.height > maxY) maxY = g.y + g.height;
   });
 
-  layoutedAnnotations.forEach((a) => {
-    if (a.x < minX) minX = a.x;
-    if (a.y < minY) minY = a.y;
-    if (a.x + a.width > maxX) maxX = a.x + a.width;
-    if (a.y + a.height > maxY) maxY = a.y + a.height;
-  });
-
   if (minX === Infinity) {
     minX = 0;
     minY = 0;
@@ -299,7 +359,81 @@ export function computeDiagramLayout(
     maxY = 600;
   }
 
-  // 9. Position Side Info & Command Box (infoBox)
+  // ──────────────────────────────────────────────────────────
+  // 9. Smart Annotation Placement — find empty gutters
+  //    Uses collision checking against all placed elements
+  // ──────────────────────────────────────────────────────────
+  const allOccupied: BoundingBox[] = [
+    ...layoutedNodes.map((n) => ({ x: n.x, y: n.y, width: n.width, height: n.height })),
+    ...layoutedGroups.map((g) => ({ x: g.x, y: g.y, width: g.width, height: g.height })),
+  ];
+
+  const layoutedAnnotations: LayoutedAnnotation[] = [];
+  annotations.forEach((ann) => {
+    const annWidth = Math.min(Math.max(ann.text.length * 7 + 50, 220), 360);
+    const annHeight = 70;
+
+    let bestX = minX;
+    let bestY = minY - annHeight - 50;
+
+    if (ann.targetNodeId && nodeMap.has(ann.targetNodeId)) {
+      const target = nodeMap.get(ann.targetNodeId)!;
+
+      // Try candidate positions: above, below, right, left of the target
+      const candidates: BoundingBox[] = [
+        { x: target.x, y: target.y - annHeight - 40, width: annWidth, height: annHeight }, // above
+        { x: target.x, y: target.y + target.height + 40, width: annWidth, height: annHeight }, // below
+        { x: target.x + target.width + 30, y: target.y, width: annWidth, height: annHeight }, // right
+        { x: target.x - annWidth - 30, y: target.y, width: annWidth, height: annHeight }, // left
+      ];
+
+      let placed = false;
+      for (const candidate of candidates) {
+        const overlaps = allOccupied.some((occ) => boxesOverlap(candidate, occ, 15));
+        if (!overlaps) {
+          bestX = candidate.x;
+          bestY = candidate.y;
+          placed = true;
+          break;
+        }
+      }
+
+      // Fallback: place above with offset if all candidates overlap
+      if (!placed) {
+        bestX = target.x + (target.width - annWidth) / 2;
+        bestY = target.y - annHeight - 60;
+      }
+    } else {
+      // No target node — place above the diagram in a row
+      const existingAnnCount = layoutedAnnotations.length;
+      bestX = minX + existingAnnCount * (annWidth + 30);
+      bestY = minY - annHeight - 50;
+    }
+
+    const annBox: BoundingBox = { x: bestX, y: bestY, width: annWidth, height: annHeight };
+    allOccupied.push(annBox);
+
+    layoutedAnnotations.push({
+      ...ann,
+      x: bestX,
+      y: bestY,
+      width: annWidth,
+      height: annHeight,
+    });
+  });
+
+  // Update bounds with annotations
+  layoutedAnnotations.forEach((a) => {
+    if (a.x < minX) minX = a.x;
+    if (a.y < minY) minY = a.y;
+    if (a.x + a.width > maxX) maxX = a.x + a.width;
+    if (a.y + a.height > maxY) maxY = a.y + a.height;
+  });
+
+  // ──────────────────────────────────────────────────────────
+  // 10. Position Side Info & Command Box (infoBox)
+  //     Placed with 100px margin from the diagram body
+  // ──────────────────────────────────────────────────────────
   let layoutedInfoBox: LayoutedInfoBox | undefined;
   if (diagram.infoBox && diagram.infoBox.items && diagram.infoBox.items.length > 0) {
     const infoItems = diagram.infoBox.items;
@@ -312,11 +446,13 @@ export function computeDiagramLayout(
     ];
     const formattedText = formattedLines.join("\n");
 
-    const boxWidth = 360;
-    const boxHeight = Math.max(180, formattedLines.length * 28 + 40);
+    // Wider box for readability
+    const boxWidth = 400;
+    const boxHeight = Math.max(200, formattedLines.length * 30 + 50);
 
     const isLeft = diagram.infoBox.side === "left";
-    const infoX = isLeft ? minX - boxWidth - 60 : maxX + 60;
+    const infoMargin = 100;
+    const infoX = isLeft ? minX - boxWidth - infoMargin : maxX + infoMargin;
     const infoY = minY;
 
     layoutedInfoBox = {
@@ -328,6 +464,7 @@ export function computeDiagramLayout(
       formattedText,
     };
 
+    // Expand diagram bounds to include the info box
     if (infoX < minX) minX = infoX;
     if (infoX + boxWidth > maxX) maxX = infoX + boxWidth;
     if (infoY + boxHeight > maxY) maxY = infoY + boxHeight;

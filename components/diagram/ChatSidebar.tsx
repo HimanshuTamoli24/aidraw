@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Editor } from "tldraw";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { Diagram, LayoutedDiagram } from "@/lib/diagram/types";
-import { renderDiagramToCanvas } from "@/lib/diagram/renderer";
+import { renderDiagramToExcalidraw } from "@/lib/diagram/renderer";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -21,8 +21,8 @@ import {
   User,
   ArrowRight,
   Lightbulb,
-  CheckCircle2,
   AlertCircle,
+  FileCode2,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -35,12 +35,17 @@ interface ChatMessage {
 }
 
 interface ChatSidebarProps {
-  editor: Editor | null;
+  excalidrawAPI: ExcalidrawImperativeAPI | null;
 }
 
 const EXAMPLE_PROMPTS = [
   {
-    title: "Google.com Request Flow",
+    title: "SSH Key Auth & Keygen",
+    prompt:
+      "Explain SSH public key authentication. Show key generation on client (Linux/macOS/Windows), uploading public key to server authorized_keys, and challenge-response authentication.",
+  },
+  {
+    title: "Google.com Request Journey",
     prompt:
       "Explain what happens when I type google.com in my browser. Show DNS lookup, IP resolution, TCP connection, TLS handshake, Nginx reverse proxy, and application server response.",
   },
@@ -50,23 +55,18 @@ const EXAMPLE_PROMPTS = [
       "Create a client-server architecture with React frontend, Node.js API backend, PostgreSQL database, and Redis cache.",
   },
   {
-    title: "HTTPS & TLS Handshake",
+    title: "HTTPS & TLS 1.3 Handshake",
     prompt:
       "Explain how HTTPS works, detailing the TLS 1.3 cryptographic handshake, certificate verification, and encrypted communication.",
   },
   {
-    title: "DNS Resolution",
-    prompt:
-      "Explain how DNS converts a domain name into an IP address via Recursive Resolver, Root Server, TLD Server, and Authoritative Name Server.",
-  },
-  {
-    title: "VPS Docker & Nginx Deploy",
+    title: "Docker VPS Deploy",
     prompt:
       "Explain what happens when I deploy a Next.js application to a VPS using Docker containers and Nginx reverse proxy with SSL.",
   },
 ];
 
-export function ChatSidebar({ editor }: ChatSidebarProps) {
+export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -74,6 +74,7 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [currentDiagram, setCurrentDiagram] = useState<Diagram | null>(null);
+  const [clearOnNew, setClearOnNew] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -87,17 +88,17 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
   }, [messages, isLoading, statusMessage]);
 
   const handleClearCanvas = () => {
-    if (!editor) return;
-    const allIds = Array.from(editor.getCurrentPageShapeIds());
-    if (allIds.length > 0) {
-      editor.deleteShapes(allIds);
-    }
+    if (!excalidrawAPI) return;
+    excalidrawAPI.resetScene();
     setCurrentDiagram(null);
   };
 
   const handleFitCanvas = () => {
-    if (!editor) return;
-    editor.zoomToFit({ animation: { duration: 300 } });
+    if (!excalidrawAPI) return;
+    const elements = excalidrawAPI.getSceneElements();
+    if (elements.length > 0) {
+      excalidrawAPI.scrollToContent(elements, { fitToViewport: true, animate: true });
+    }
   };
 
   const handleSubmit = async (customPrompt?: string) => {
@@ -116,7 +117,7 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
 
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
-    setStatusMessage("Architecting technical diagram...");
+    setStatusMessage("Architecting technical diagram & commands...");
 
     try {
       // Build conversation history for context
@@ -125,7 +126,7 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
         content: m.content,
       }));
 
-      setStatusMessage("Consulting AI model for system topology...");
+      setStatusMessage("Consulting AI model for topology & cheat-sheet...");
 
       const response = await fetch("/api/diagram", {
         method: "POST",
@@ -146,12 +147,12 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
       const generatedDiagram: Diagram = data.diagram;
       setCurrentDiagram(generatedDiagram);
 
-      setStatusMessage("Rendering hand-drawn shapes and connections...");
+      setStatusMessage("Rendering hand-drawn Excalidraw elements & info card...");
 
       let layout: LayoutedDiagram | undefined;
-      if (editor) {
-        layout = renderDiagramToCanvas(editor, generatedDiagram, {
-          clearCanvas: false,
+      if (excalidrawAPI) {
+        layout = await renderDiagramToExcalidraw(excalidrawAPI, generatedDiagram, {
+          clearCanvas: clearOnNew,
           animate: true,
         });
       }
@@ -184,9 +185,9 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
     }
   };
 
-  const handleReFocus = (diagram?: Diagram) => {
-    if (!editor || !diagram) return;
-    renderDiagramToCanvas(editor, diagram, { clearCanvas: true, animate: true });
+  const handleReFocus = async (diagram?: Diagram) => {
+    if (!excalidrawAPI || !diagram) return;
+    await renderDiagramToExcalidraw(excalidrawAPI, diagram, { clearCanvas: true, animate: true });
   };
 
   return (
@@ -198,7 +199,7 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
           className="fixed top-4 left-4 z-40 shadow-xl bg-zinc-900/90 text-white hover:bg-zinc-800 backdrop-blur-md border border-zinc-700/50 flex items-center gap-2 px-3.5 py-2.5 rounded-xl transition-all"
         >
           <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-          <span className="font-semibold text-xs tracking-wide">AI Whiteboard Architect</span>
+          <span className="font-semibold text-xs tracking-wide">AI Excalidraw Architect</span>
           <ChevronRight className="w-3.5 h-3.5 text-zinc-400" />
         </Button>
       )}
@@ -212,18 +213,18 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
         {/* Header */}
         <header className="p-4 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+            <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-500/20 to-indigo-500/20 border border-blue-500/30 text-blue-600 dark:text-blue-400">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
               <h1 className="font-bold text-sm tracking-tight text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
-                AI Diagram Architect
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-amber-500/40 text-amber-600 dark:text-amber-400">
+                Excalidraw Architect
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-blue-500/40 text-blue-600 dark:text-blue-400">
                   GPT-OSS 120B
                 </Badge>
               </h1>
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Natural language to editable tldraw
+                Natural language to hand-drawn Excalidraw
               </p>
             </div>
           </div>
@@ -266,11 +267,11 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
               <div className="p-4 rounded-2xl bg-zinc-100/70 dark:bg-zinc-900/70 border border-zinc-200/60 dark:border-zinc-800/60 space-y-2">
                 <div className="flex items-center gap-2 text-zinc-800 dark:text-zinc-200 font-semibold">
                   <Lightbulb className="w-4 h-4 text-amber-500" />
-                  <span>Technical Whiteboard Generator</span>
+                  <span>Interactive Whiteboard & Cheat-Sheet</span>
                 </div>
                 <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-[11px]">
-                  Type any software flow, network topology, protocol handshake, or hardware pipeline. The AI will draw
-                  interactive, editable shapes, grouped zones, and labeled arrows directly on this whiteboard.
+                  Describe any engineering architecture, protocol, or workflow. The AI will draw clean, hand-drawn
+                  Excalidraw shapes, labeled connections, grouped zones, and a dedicated **Side Information & Commands Box**.
                 </p>
               </div>
 
@@ -286,14 +287,14 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
                       className="w-full text-left p-2.5 rounded-xl bg-zinc-50 hover:bg-zinc-100/90 dark:bg-zinc-900/50 dark:hover:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-800/60 transition-all flex items-center justify-between group"
                     >
                       <div className="pr-2">
-                        <div className="font-medium text-zinc-800 dark:text-zinc-200 text-xs group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                        <div className="font-medium text-zinc-800 dark:text-zinc-200 text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {item.title}
                         </div>
                         <div className="text-[10px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-0.5">
                           {item.prompt}
                         </div>
                       </div>
-                      <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                      <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -315,8 +316,8 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
                     </>
                   ) : (
                     <>
-                      <Bot className="w-3 h-3 text-amber-500" />
-                      <span>Whiteboard Architect</span>
+                      <Bot className="w-3 h-3 text-blue-500" />
+                      <span>Excalidraw Architect</span>
                     </>
                   )}
                 </div>
@@ -331,29 +332,49 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
                   <p className="whitespace-pre-wrap">{msg.content}</p>
 
                   {msg.diagram && (
-                    <div className="mt-3 pt-2.5 border-t border-zinc-200/50 dark:border-zinc-800/50 flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary" className="text-[10px] gap-1 px-2 py-0.5">
-                        <Layers className="w-3 h-3" />
-                        {msg.diagram.nodes.length} Nodes
-                      </Badge>
-                      <Badge variant="secondary" className="text-[10px] gap-1 px-2 py-0.5">
-                        <ArrowRight className="w-3 h-3" />
-                        {msg.diagram.connections.length} Arrows
-                      </Badge>
-                      {msg.diagram.groups && msg.diagram.groups.length > 0 && (
-                        <Badge variant="secondary" className="text-[10px] px-2 py-0.5">
-                          {msg.diagram.groups.length} Zones
+                    <div className="mt-3 pt-2.5 border-t border-zinc-200/50 dark:border-zinc-800/50 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary" className="text-[10px] gap-1 px-2 py-0.5">
+                          <Layers className="w-3 h-3" />
+                          {msg.diagram.nodes.length} Nodes
                         </Badge>
+                        <Badge variant="secondary" className="text-[10px] gap-1 px-2 py-0.5">
+                          <ArrowRight className="w-3 h-3" />
+                          {msg.diagram.connections.length} Arrows
+                        </Badge>
+                        {msg.diagram.infoBox && (
+                          <Badge variant="secondary" className="text-[10px] gap-1 px-2 py-0.5 text-blue-600 dark:text-blue-400">
+                            <FileCode2 className="w-3 h-3" />
+                            Commands
+                          </Badge>
+                        )}
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => handleReFocus(msg.diagram)}
+                          className="ml-auto text-[10px] h-6 px-2 border-zinc-300 dark:border-zinc-700"
+                        >
+                          <RotateCcw className="w-2.5 h-2.5 mr-1" />
+                          Focus Canvas
+                        </Button>
+                      </div>
+
+                      {/* Inline InfoBox Items */}
+                      {msg.diagram.infoBox && msg.diagram.infoBox.items.length > 0 && (
+                        <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 space-y-1">
+                          <div className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                            <FileCode2 className="w-3 h-3" />
+                            {msg.diagram.infoBox.title || "Quick Reference"}
+                          </div>
+                          <ul className="space-y-0.5">
+                            {msg.diagram.infoBox.items.map((item: string, i: number) => (
+                              <li key={i} className="text-[10px] text-blue-900 dark:text-blue-200 font-mono leading-relaxed">
+                                <span className="text-blue-500">•</span> {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       )}
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        onClick={() => handleReFocus(msg.diagram)}
-                        className="ml-auto text-[10px] h-6 px-2 border-zinc-300 dark:border-zinc-700"
-                      >
-                        <RotateCcw className="w-2.5 h-2.5 mr-1" />
-                        Focus Canvas
-                      </Button>
                     </div>
                   )}
                 </div>
@@ -363,10 +384,10 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
 
           {/* Loading Indicator */}
           {isLoading && (
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 flex items-center gap-2.5 animate-pulse">
-              <Spinner className="w-4 h-4 text-amber-500" />
+            <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 flex items-center gap-2.5 animate-pulse">
+              <Spinner className="w-4 h-4 text-blue-500" />
               <div className="text-[11px] font-medium">
-                {statusMessage || "Architecting your diagram..."}
+                {statusMessage || "Architecting your Excalidraw diagram..."}
               </div>
             </div>
           )}
@@ -395,13 +416,28 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
 
         {/* Input Area */}
         <footer className="p-3 border-t border-zinc-200/80 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/70 space-y-2">
-          <div className="relative rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 shadow-inner focus-within:ring-2 focus-within:ring-amber-500/50 transition-all">
+          {/* Clear Canvas Toggle */}
+          <div className="flex items-center gap-2 px-1">
+            <label className="flex items-center gap-1.5 cursor-pointer select-none group">
+              <input
+                type="checkbox"
+                checked={clearOnNew}
+                onChange={(e) => setClearOnNew(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-zinc-400 text-blue-600 focus:ring-blue-500/50 cursor-pointer"
+              />
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors">
+                Clear canvas before new diagram
+              </span>
+            </label>
+          </div>
+
+          <div className="relative rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 shadow-inner focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
             <Textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Describe a technical concept or architecture..."
+              placeholder="Describe what to draw on Excalidraw..."
               className="resize-none min-h-[70px] max-h-[160px] border-0 bg-transparent text-xs p-2.5 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-zinc-400"
               disabled={isLoading}
             />
@@ -413,7 +449,7 @@ export function ChatSidebar({ editor }: ChatSidebarProps) {
                 size="icon-sm"
                 onClick={() => handleSubmit()}
                 disabled={!input.trim() || isLoading}
-                className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-sm disabled:opacity-40 transition-all"
+                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm disabled:opacity-40 transition-all"
               >
                 {isLoading ? <Spinner className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
               </Button>
