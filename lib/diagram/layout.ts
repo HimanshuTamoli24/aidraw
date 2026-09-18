@@ -43,42 +43,40 @@ function computeNodeDimensions(
   subtitle?: string,
   shape?: string
 ): { width: number; height: number } {
-  // Base dimensions — generous defaults
-  let width = 280;
-  let height = 110;
+  // Base dimensions — compact and screen-friendly
+  let width = 190;
+  let height = 80;
 
   // Scale width based on longest text line
   const titleLen = title.length;
   const subLen = subtitle ? subtitle.length : 0;
   const maxTextLen = Math.max(titleLen, subLen);
 
-  // ~9px per character at font-size 14-15, plus padding
-  const textWidth = maxTextLen * 9 + 60;
-  width = Math.max(width, Math.min(420, textWidth));
+  // ~8px per character at font-size 12-13, plus padding
+  const textWidth = maxTextLen * 8 + 45;
+  width = Math.max(width, Math.min(250, textWidth));
 
-  // If subtitle exists, add vertical space
+  // If subtitle exists, add slight vertical space
   if (subtitle) {
-    height = 130;
+    height = 92;
   }
 
   // Shape-specific minimum dimensions
   switch (shape) {
     case "cloud":
-      width = Math.max(width, 300);
-      height = Math.max(height, 140);
+      width = Math.max(width, 210);
+      height = Math.max(height, 100);
       break;
     case "ellipse":
-      // Ellipses need extra space because text is inscribed
-      width = Math.max(width, 280);
-      height = Math.max(height, 130);
+      width = Math.max(width, 190);
+      height = Math.max(height, 90);
       break;
     case "diamond":
-      // Diamonds need even more space — text is inscribed in a rotated square
-      width = Math.max(width, 260);
-      height = Math.max(height, 160);
+      width = Math.max(width, 180);
+      height = Math.max(height, 100);
       break;
     case "rounded":
-      width = Math.max(width, 280);
+      width = Math.max(width, 190);
       break;
   }
 
@@ -89,7 +87,7 @@ export function computeDiagramLayout(
   diagram: Diagram,
   options: LayoutOptions = {}
 ): LayoutedDiagram {
-  const { startX = 160, startY = 200, gapX = 380, gapY = 260 } = options;
+  const { startX = 80, startY = 120, gapX = 130, gapY = 90 } = options;
 
   const nodeMap = new Map<string, LayoutedNode>();
   const nodes = diagram.nodes || [];
@@ -316,9 +314,9 @@ export function computeDiagramLayout(
       const maxX = Math.max(...memberNodes.map((n) => n.x + n.width));
       const maxY = Math.max(...memberNodes.map((n) => n.y + n.height));
 
-      const paddingX = 60;
-      const paddingTop = 80;
-      const paddingBottom = 55;
+      const paddingX = 35;
+      const paddingTop = 48;
+      const paddingBottom = 28;
 
       layoutedGroups.push({
         ...g,
@@ -370,21 +368,21 @@ export function computeDiagramLayout(
 
   const layoutedAnnotations: LayoutedAnnotation[] = [];
   annotations.forEach((ann) => {
-    const annWidth = Math.min(Math.max(ann.text.length * 7 + 50, 220), 360);
-    const annHeight = 70;
+    const annWidth = Math.min(Math.max(ann.text.length * 6 + 36, 170), 260);
+    const annHeight = 55;
 
     let bestX = minX;
-    let bestY = minY - annHeight - 50;
+    let bestY = minY - annHeight - 40;
 
     if (ann.targetNodeId && nodeMap.has(ann.targetNodeId)) {
       const target = nodeMap.get(ann.targetNodeId)!;
 
       // Try candidate positions: above, below, right, left of the target
       const candidates: BoundingBox[] = [
-        { x: target.x, y: target.y - annHeight - 40, width: annWidth, height: annHeight }, // above
-        { x: target.x, y: target.y + target.height + 40, width: annWidth, height: annHeight }, // below
-        { x: target.x + target.width + 30, y: target.y, width: annWidth, height: annHeight }, // right
-        { x: target.x - annWidth - 30, y: target.y, width: annWidth, height: annHeight }, // left
+        { x: target.x, y: target.y - annHeight - 30, width: annWidth, height: annHeight }, // above
+        { x: target.x, y: target.y + target.height + 30, width: annWidth, height: annHeight }, // below
+        { x: target.x + target.width + 25, y: target.y, width: annWidth, height: annHeight }, // right
+        { x: target.x - annWidth - 25, y: target.y, width: annWidth, height: annHeight }, // left
       ];
 
       let placed = false;
@@ -401,13 +399,13 @@ export function computeDiagramLayout(
       // Fallback: place above with offset if all candidates overlap
       if (!placed) {
         bestX = target.x + (target.width - annWidth) / 2;
-        bestY = target.y - annHeight - 60;
+        bestY = target.y - annHeight - 45;
       }
     } else {
       // No target node — place above the diagram in a row
       const existingAnnCount = layoutedAnnotations.length;
-      bestX = minX + existingAnnCount * (annWidth + 30);
-      bestY = minY - annHeight - 50;
+      bestX = minX + existingAnnCount * (annWidth + 20);
+      bestY = minY - annHeight - 40;
     }
 
     const annBox: BoundingBox = { x: bestX, y: bestY, width: annWidth, height: annHeight };
@@ -432,7 +430,7 @@ export function computeDiagramLayout(
 
   // ──────────────────────────────────────────────────────────
   // 10. Position Side Info & Command Box (infoBox)
-  //     Placed with 100px margin from the diagram body
+  //     Placed with 50px margin from the diagram body
   // ──────────────────────────────────────────────────────────
   let layoutedInfoBox: LayoutedInfoBox | undefined;
   if (diagram.infoBox && diagram.infoBox.items && diagram.infoBox.items.length > 0) {
@@ -446,12 +444,11 @@ export function computeDiagramLayout(
     ];
     const formattedText = formattedLines.join("\n");
 
-    // Wider box for readability
-    const boxWidth = 400;
-    const boxHeight = Math.max(200, formattedLines.length * 30 + 50);
+    const boxWidth = 320;
+    const boxHeight = Math.max(160, formattedLines.length * 24 + 40);
 
     const isLeft = diagram.infoBox.side === "left";
-    const infoMargin = 100;
+    const infoMargin = 50;
     const infoX = isLeft ? minX - boxWidth - infoMargin : maxX + infoMargin;
     const infoY = minY;
 

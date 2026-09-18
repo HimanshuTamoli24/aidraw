@@ -72,52 +72,44 @@ You MUST return ONLY a valid JSON object matching this schema:
 CRITICAL DESIGN & ARCHITECTURAL CLARITY RULES
 ==================================================
 
-**1. DIAGRAM MUST BE EASILY UNDERSTANDABLE (HIGHEST PRIORITY):**
-- DO NOT just draw disconnected boxes and random arrows. The diagram MUST tell a clear, coherent architectural story.
-- **SEQUENTIAL STEP NUMBERING**: Every connection label MUST start with a sequential step number showing the exact order of events:
-  - Example: "1. DNS Query (UDP 53)", "2. Return IP Address", "3. TCP Handshake", "4. TLS 1.3 Key Exchange", "5. HTTP GET /api/data", "6. Query Redis Cache", "7. DB Query Fallback", "8. 200 OK JSON Response"
-  - A user should be able to trace numbers 1 → 2 → 3... across the canvas and instantly understand the entire technical journey.
+**1. CLEAN, MINIMAL & SIMPLE (HIGHEST PRIORITY):**
+- The diagram MUST be clean, uncluttered, and instantly understandable at a single glance.
+- **REDUCE UNNECESSARY BOXES**: Strictly limit the diagram to **4 to 6 essential nodes maximum** (e.g., User/Client → Gateway/Load Balancer → App Server → Database).
+- DO NOT create redundant internal micro-step boxes, duplicate nodes, or unnecessary intermediate shapes. Focus only on the core architectural components.
+- **FIT ON SCREEN**: Keep the layout compact and concise so the entire diagram fits cleanly on screen without forcing excessive zoom-out or horizontal panning.
 
-**2. TIER & ZONE GROUPING (MANDATORY):**
-- Organize nodes into 2 to 4 logical architectural tiers using the "groups" field:
-  - Tier 1: "Client Tier" (Browser, Mobile App, CLI, User Terminal)
-  - Tier 2: "Edge & Gateway" (DNS Resolver, Cloudflare CDN, Nginx Reverse Proxy, Load Balancer)
-  - Tier 3: "Application & Services" (Next.js App Server, Node.js API, Microservices, Auth Service)
-  - Tier 4: "Data & Persistence" (PostgreSQL, Redis Cache, S3 Storage, Message Queue)
-- Every node should belong to its corresponding group so zones are visually distinct.
+**2. CLEAN FORWARD ARROW FLOW (ZERO CROSSING ARROWS):**
+- Arrows must follow a clean, strict Left-to-Right (or Top-to-Bottom) progression: Node 1 → Node 2 → Node 3 → Node 4.
+- **ARROWS MUST NEVER CROSS EACH OTHER OR OVERLAP ANY SHAPES**.
+- Connect each node ONLY to its direct adjacent neighbor in the flow. DO NOT draw diagonal shortcut arrows that jump across intermediate nodes.
+- Combine round-trip handshakes or bidirectional request/response exchanges into a single clean connection (e.g. "1. Query & Response").
+- Total connections should be minimal (typically 3 to 5 connections for a 4-to-6 node diagram).
 
-**3. INFORMATIVE NODE TITLES, SUBTITLES & PRE-BUILT LIBRARY TYPES:**
-- **MAXIMIZE PRE-BUILT LIBRARY ICONS**: Always select the most specific "type" for each node so the engine can instantiate real pre-built Excalidraw library icons (servers, databases, docker containers, clients, routers, firewalls, lambda, cloud, queues) instead of generic blank shapes:
-  - Use 'server' or 'web-server' for compute / Nginx / backend (instantiates real server racks).
-  - Use 'database' for relational/NoSQL datastores (instantiates real DB cylinders).
-  - Use 'docker' for containers or Kubernetes pods (instantiates real Docker container icons).
-  - Use 'client' or 'browser' for user machines, laptops, or browsers (instantiates real device icons).
-  - Use 'user' for human actors/users (instantiates real user icons).
-  - Use 'gateway' or 'load-balancer' for API Gateways, reverse proxies, and balancers.
-  - Use 'firewall' for WAF, security, and SSL termination points.
-  - Use 'cloud' for VPC, external networks, and cloud providers.
-  - Use 'queue' for message brokers, SQS, Kafka, streams.
-  - Use 'storage' for S3 buckets, blob storage, disks.
-  - Use 'lambda' for serverless functions and workers.
-  - Use 'github' for git repositories and CI/CD pipelines.
-- Titles must be clean and short (≤ 3 words): "Browser Client", "DNS Resolver", "Nginx Proxy", "Node.js API", "PostgreSQL DB", "Redis Cache".
-- Subtitles MUST provide key technical context: protocol, port, or technology (e.g., "Chrome / Safari", "Port 53 UDP", "Reverse Proxy :443", "REST API :3000", "Relational DB :5432", "In-Memory LRU :6379").
+**3. SHORT, CLEAR LABELS & NUMBERED STEPS:**
+- Number every connection sequentially: "1. DNS Lookup", "2. TLS Handshake & HTTP Request", "3. Query Cache/DB".
+- Keep connection labels concise (≤ 4 words) so labels sit cleanly beside the arrow line.
+- Node titles: short and punchy (≤ 3 words): "Browser Client", "API Gateway", "Node.js Server", "PostgreSQL DB".
+- Node subtitles: brief technical context (e.g. "Port 443", "REST API :3000", "Port 5432").
 
+**4. PRE-BUILT LIBRARY ICONS:**
+- Choose the best matching "type" for each node to instantiate real pre-built vector icons:
+  - 'server' / 'web-server' for compute / backend / Nginx
+  - 'database' for relational/NoSQL datastores
+  - 'docker' for containers or Kubernetes pods
+  - 'client' / 'browser' for user machines, laptops, or browsers
+  - 'user' for human actors
+  - 'gateway' / 'load-balancer' for API Gateways and proxies
+  - 'cloud' for external networks or cloud VPCs
+  - 'queue' for message queues / Kafka / SQS
+  - 'cache' for Redis / Memcached
 
-**4. CLEAN, DIRECT ARROW FLOW:**
-- Clean Left-to-Right (horizontal) or Top-to-Bottom (vertical) flow.
-- AVOID crossing arrows or zigzag loops. Keep connections between neighboring tiers.
-- MAXIMUM 1-2 connections between any pair of nodes. Combine round-trip handshakes into a clear single connection with a step label (e.g., "1. SYN → 2. SYN-ACK → 3. ACK").
-- 6-10 nodes maximum for optimal whiteboard readability.
+**5. ARCHITECTURAL TIERS (OPTIONAL / COMPACT):**
+- Use 2 to 3 compact groups maximum (e.g., "Client Tier", "Application Tier", "Data Tier") to visually group related nodes without cluttering the canvas.
 
-**5. PRACTICAL INFOBOX (MANDATORY):**
-- ALWAYS provide an "infoBox" with 4-8 copy-pastable, real-world CLI commands, config snippets, or debugging commands relevant to the topic:
-  - For SSH: 'ssh-keygen -t ed25519', 'ssh-copy-id', permissions 'chmod 600 ~/.ssh/authorized_keys'.
-  - For DNS/Web: 'dig +trace google.com', 'curl -Iv https://google.com', 'openssl s_client -connect ...'.
-  - For Docker/Deploy: 'docker compose up -d', 'docker logs -f', 'nginx -t && nginx -s reload'.
-  - Provide both Linux/macOS and Windows commands where helpful.
+**6. PRACTICAL INFOBOX (MANDATORY):**
+- Provide an "infoBox" with 3-5 real-world, copy-pastable CLI commands or configuration snippets relevant to the system.
 
-**6. OUTPUT FORMAT:**
+**7. OUTPUT FORMAT:**
 - DO NOT output markdown backticks (no triple backticks json). Return pure valid JSON string only.
 `;
 

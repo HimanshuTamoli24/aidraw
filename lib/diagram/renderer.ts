@@ -187,12 +187,12 @@ export async function renderDiagramToExcalidraw(
     }
   }
 
-  // Compute deterministic layout with wider spacing
+  // Compute deterministic layout with clean compact spacing
   const layout = computeDiagramLayout(diagram, {
     startX,
     startY,
-    gapX: 380,
-    gapY: 260,
+    gapX: 130,
+    gapY: 90,
   });
 
   const skeletons: any[] = [];
@@ -204,9 +204,9 @@ export async function renderDiagramToExcalidraw(
   skeletons.push({
     type: "text",
     x: layout.bounds.minX,
-    y: layout.bounds.minY - 110,
+    y: layout.bounds.minY - 70,
     text: `📐 ${layout.title}${layout.summary ? `\n— ${layout.summary}` : ""}`,
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: 2, // Helvetica / Clean Sans-serif
     strokeColor: "#0f172a",
   });
@@ -230,7 +230,7 @@ export async function renderDiagramToExcalidraw(
       roundness: { type: 3 },
       label: {
         text: `[ ${g.title.toUpperCase()} ]`,
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: 2,
         textAlign: "left",
         verticalAlign: "top",
@@ -244,8 +244,9 @@ export async function renderDiagramToExcalidraw(
   // ──────────────────────────────────────────────────────────
   layout.nodes.forEach((node) => {
     nodeMap.set(node.id, node);
+    const colors = getNodeColorTheme(node);
 
-    // Check if matching item in loaded library store
+    // Check if matching atomic item in loaded library store
     const dynamicLibItem = libraryStore.findMatchingItem(node.type, node.title);
     if (dynamicLibItem) {
       const instantiated = libraryStore.instantiateItem(
@@ -256,10 +257,13 @@ export async function renderDiagramToExcalidraw(
         node.width,
         node.height,
         node.title,
-        node.subtitle
+        node.subtitle,
+        colors
       );
-      skeletons.push(...instantiated);
-      return;
+      if (instantiated.length > 0) {
+        skeletons.push(...instantiated);
+        return;
+      }
     }
 
     // Check built-in library component definition
@@ -280,7 +284,6 @@ export async function renderDiagramToExcalidraw(
 
     // Fallback standard shape
     const shapeType = getNodeShapeType(node);
-    const colors = getNodeColorTheme(node);
 
     let displayText = node.title;
     if (node.subtitle) {
@@ -302,7 +305,7 @@ export async function renderDiagramToExcalidraw(
       roundness: { type: 3 },
       label: {
         text: displayText,
-        fontSize: 14,
+        fontSize: 13,
         fontFamily: 2, // Helvetica / Clean Sans-serif
         textAlign: "center",
         verticalAlign: "middle",
@@ -313,7 +316,6 @@ export async function renderDiagramToExcalidraw(
 
   // ──────────────────────────────────────────────────────────
   // 4. Dedicated Side Info & Commands Card (infoBox)
-  //    Distinctive dashed border + lighter blue background
   // ──────────────────────────────────────────────────────────
   if (layout.infoBox) {
     skeletons.push({
@@ -332,7 +334,7 @@ export async function renderDiagramToExcalidraw(
       roundness: { type: 3 },
       label: {
         text: layout.infoBox.formattedText,
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: 3, // Monospace for commands
         textAlign: "left",
         verticalAlign: "top",
@@ -373,6 +375,7 @@ export async function renderDiagramToExcalidraw(
     const fromNode = nodeMap.get(conn.from);
     const toNode = nodeMap.get(conn.to);
     if (!fromNode || !toNode) return;
+    if (conn.from === conn.to) return; // Ignore self-loops
 
     const route = arrowRoutes.get(conn.id);
     if (!route) return;
@@ -389,8 +392,6 @@ export async function renderDiagramToExcalidraw(
       type: "arrow",
       x: route.startX,
       y: route.startY,
-      start: { id: `node-${conn.from}` },
-      end: { id: `node-${conn.to}` },
       points: route.points,
       strokeColor,
       strokeWidth: 2,
@@ -402,13 +403,14 @@ export async function renderDiagramToExcalidraw(
       label: conn.label
         ? {
             text: conn.label,
-            fontSize: 12,
+            fontSize: 11,
             fontFamily: 2, // Helvetica / Clean Sans-serif
             strokeColor: "#1e293b",
           }
         : undefined,
     });
   });
+
 
   // ──────────────────────────────────────────────────────────
   // 6. Annotations / Callout Notes

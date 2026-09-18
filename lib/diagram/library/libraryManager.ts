@@ -45,8 +45,32 @@ class ExcalidrawLibraryStore {
       const elements: any[] = item.elements || (Array.isArray(item) ? item : []);
       if (elements.length === 0) return;
 
-      // Extract text content if available
+      // REJECT composite system templates: only accept atomic single icons
+      // Reject if item contains arrows or line connectors
+      const hasArrows = elements.some(
+        (el) => el.type === "arrow" || (el.type === "line" && (el.startArrowhead || el.endArrowhead))
+      );
+      if (hasArrows) return;
+
       const textElements = elements.filter((el) => el.type === "text" && el.text);
+      // Reject if it has more than 1 text label (composite labeled diagram)
+      if (textElements.length > 1) return;
+
+      // Reject if too many elements for a single icon
+      if (elements.length > 14) return;
+
+      // Calculate bounding box and reject large multi-component scenes
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      elements.forEach((el) => {
+        if (el.x < minX) minX = el.x;
+        if (el.y < minY) minY = el.y;
+        if (el.x + (el.width || 0) > maxX) maxX = el.x + (el.width || 0);
+        if (el.y + (el.height || 0) > maxY) maxY = el.y + (el.height || 0);
+      });
+      const origW = maxX - minX;
+      const origH = maxY - minY;
+      if (origW > 250 && origH > 250) return;
+
       const textNames = textElements.map((el) => el.text.toLowerCase());
 
       // Extract explicit name if available
@@ -132,18 +156,25 @@ class ExcalidrawLibraryStore {
     targetWidth: number,
     targetHeight: number,
     title: string,
-    subtitle?: string
+    subtitle?: string,
+    colorTheme?: { bg: string; stroke: string }
   ): any[] {
     const rawElements = item.elements;
     if (!rawElements || rawElements.length === 0) return [];
 
-    // Calculate natural bounding box of original icon elements
+    // CRITICAL: Filter out text, arrows, and connected lines from the icon glyph so they NEVER collide with title/subtitle!
+    const iconElements = rawElements.filter(
+      (el) => el.type !== "text" && el.type !== "arrow" && !el.startArrowhead && !el.endArrowhead
+    );
+    if (iconElements.length === 0) return [];
+
+    // Calculate natural bounding box of icon glyph elements
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
 
-    rawElements.forEach((el) => {
+    iconElements.forEach((el) => {
       if (el.x < minX) minX = el.x;
       if (el.y < minY) minY = el.y;
       if (el.x + (el.width || 0) > maxX) maxX = el.x + (el.width || 0);
@@ -153,26 +184,29 @@ class ExcalidrawLibraryStore {
     const origW = Math.max(maxX - minX, 1);
     const origH = Math.max(maxY - minY, 1);
 
-    // Reserve top 55% of the card height for the icon, bottom 45% for the text
-    const maxIconW = targetWidth - 36;
-    const maxIconH = Math.max(targetHeight * 0.45, 40);
+    // Keep icon artwork compact: max 48px width, max 28px height
+    const maxIconW = 48;
+    const maxIconH = 28;
 
     const scaleX = maxIconW / origW;
     const scaleY = maxIconH / origH;
-    const scale = Math.min(scaleX, scaleY, 1.2); // Don't overscale tiny icons
+    const scale = Math.min(scaleX, scaleY, 1.0);
 
     const scaledW = origW * scale;
     const scaledH = origH * scale;
 
-    // Center icon horizontally, position in top section
+    // Center icon horizontally at the top of the card
     const iconOffsetX = (targetWidth - scaledW) / 2;
-    const iconOffsetY = 14;
+    const iconOffsetY = 8;
 
     const groupId = `group-lib-${nodeId}-${Date.now()}`;
     const newElements: any[] = [];
 
-    // 1. Clean container card as the base shape (arrows connect cleanly to this)
+    // 1. Clean container card as the base shape
     const labelText = subtitle ? `${title}\n(${subtitle})` : title;
+    const bg = colorTheme?.bg || "#ffffff";
+    const stroke = colorTheme?.stroke || "#0284c7";
+
     newElements.push({
       id: `node-${nodeId}`,
       type: "rectangle",
@@ -180,8 +214,8 @@ class ExcalidrawLibraryStore {
       y,
       width: targetWidth,
       height: targetHeight,
-      backgroundColor: "#ffffff",
-      strokeColor: "#0284c7",
+      backgroundColor: bg,
+      strokeColor: stroke,
       strokeWidth: 2,
       fillStyle: "solid",
       roughness: 0,
@@ -189,7 +223,7 @@ class ExcalidrawLibraryStore {
       groupIds: [groupId],
       label: {
         text: labelText,
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: 2, // Helvetica
         textAlign: "center",
         verticalAlign: "bottom",
@@ -197,8 +231,8 @@ class ExcalidrawLibraryStore {
       },
     });
 
-    // 2. Clone and position icon elements inside the card
-    rawElements.forEach((el, index) => {
+    // 2. Clone and position pure icon shapes inside the card
+    iconElements.forEach((el, index) => {
       const elX = x + iconOffsetX + (el.x - minX) * scale;
       const elY = y + iconOffsetY + (el.y - minY) * scale;
 
@@ -221,4 +255,5 @@ class ExcalidrawLibraryStore {
 }
 
 export const libraryStore = new ExcalidrawLibraryStore();
+
 
