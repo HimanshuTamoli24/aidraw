@@ -86,9 +86,23 @@ CRITICAL DESIGN & ARCHITECTURAL CLARITY RULES
   - Tier 4: "Data & Persistence" (PostgreSQL, Redis Cache, S3 Storage, Message Queue)
 - Every node should belong to its corresponding group so zones are visually distinct.
 
-**3. INFORMATIVE NODE TITLES & SUBTITLES:**
+**3. INFORMATIVE NODE TITLES, SUBTITLES & PRE-BUILT LIBRARY TYPES:**
+- **MAXIMIZE PRE-BUILT LIBRARY ICONS**: Always select the most specific "type" for each node so the engine can instantiate real pre-built Excalidraw library icons (servers, databases, docker containers, clients, routers, firewalls, lambda, cloud, queues) instead of generic blank shapes:
+  - Use 'server' or 'web-server' for compute / Nginx / backend (instantiates real server racks).
+  - Use 'database' for relational/NoSQL datastores (instantiates real DB cylinders).
+  - Use 'docker' for containers or Kubernetes pods (instantiates real Docker container icons).
+  - Use 'client' or 'browser' for user machines, laptops, or browsers (instantiates real device icons).
+  - Use 'user' for human actors/users (instantiates real user icons).
+  - Use 'gateway' or 'load-balancer' for API Gateways, reverse proxies, and balancers.
+  - Use 'firewall' for WAF, security, and SSL termination points.
+  - Use 'cloud' for VPC, external networks, and cloud providers.
+  - Use 'queue' for message brokers, SQS, Kafka, streams.
+  - Use 'storage' for S3 buckets, blob storage, disks.
+  - Use 'lambda' for serverless functions and workers.
+  - Use 'github' for git repositories and CI/CD pipelines.
 - Titles must be clean and short (≤ 3 words): "Browser Client", "DNS Resolver", "Nginx Proxy", "Node.js API", "PostgreSQL DB", "Redis Cache".
 - Subtitles MUST provide key technical context: protocol, port, or technology (e.g., "Chrome / Safari", "Port 53 UDP", "Reverse Proxy :443", "REST API :3000", "Relational DB :5432", "In-Memory LRU :6379").
+
 
 **4. CLEAN, DIRECT ARROW FLOW:**
 - Clean Left-to-Right (horizontal) or Top-to-Bottom (vertical) flow.

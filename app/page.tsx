@@ -26,20 +26,26 @@ function getSavedLibraryItems(): any[] {
   return [];
 }
 
+import defaultArchLib from "@/public/libraries/default-architecture.json";
+
 export default function Home() {
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
   const [initialLibraryItems, setInitialLibraryItems] = useState<any[]>([]);
   const hasLoadedInitial = useRef(false);
 
-  // Load saved library items from localStorage once on client mount
+  // Load bundled + saved library items once on client mount
   useEffect(() => {
     const saved = getSavedLibraryItems();
-    if (saved.length > 0) {
-      setInitialLibraryItems(saved);
-      libraryStore.registerLibraryItems(saved);
-      console.log(`[Library] Restored ${saved.length} library items from localStorage.`);
-    }
+    const defaults = (defaultArchLib?.libraryItems as any[]) || [];
+    const combined = [...defaults, ...saved];
+    const unique = Array.from(
+      new Map(combined.map((it) => [it.id || it.name || JSON.stringify(it.elements?.[0]?.id), it])).values()
+    );
+    setInitialLibraryItems(unique);
+    libraryStore.registerLibraryItems(unique);
+    console.log(`[Library] Loaded ${unique.length} library items into canvas and AI generator.`);
   }, []);
+
 
   // Save changes whenever user adds/removes library items in Excalidraw UI
   const handleLibraryChange = useCallback((items: readonly any[]) => {
