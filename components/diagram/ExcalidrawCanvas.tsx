@@ -52,15 +52,57 @@ export function ExcalidrawCanvas({
 }: ExcalidrawCanvasProps) {
   const [initialScene, setInitialScene] = React.useState<{ elements: any[]; appState: any } | null>(null);
   const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
-  // Load saved canvas drawings on client mount
+  // Load saved canvas drawings on client mount and synchronize initial theme
   React.useEffect(() => {
     const data = getSavedCanvasData();
     setInitialScene(data);
+    const savedTheme = data.appState?.theme;
+    if (savedTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else if (savedTheme === "light") {
+      document.documentElement.classList.remove("dark");
+    }
   }, []);
+
+  // MutationObserver to immediately detect Excalidraw's theme changes in DOM (.theme--dark)
+  React.useEffect(() => {
+    if (!containerRef.current) return;
+
+    const syncThemeFromDom = () => {
+      const excalidrawEl = containerRef.current?.querySelector(".excalidraw");
+      if (excalidrawEl) {
+        const isDark =
+          excalidrawEl.classList.contains("theme--dark") ||
+          excalidrawEl.getAttribute("data-theme") === "dark";
+        document.documentElement.classList.toggle("dark", isDark);
+      }
+    };
+
+    // Initial check
+    syncThemeFromDom();
+
+    const observer = new MutationObserver(() => {
+      syncThemeFromDom();
+    });
+
+    observer.observe(containerRef.current, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ["class", "data-theme"],
+    });
+
+    return () => observer.disconnect();
+  }, [initialScene]);
 
   // Debounced auto-save for all drawn elements and view state
   const handleChange = React.useCallback((elements: readonly any[], appState: any) => {
+    // Immediately synchronize theme with DOM
+    if (appState?.theme) {
+      document.documentElement.classList.toggle("dark", appState.theme === "dark");
+    }
+
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
@@ -95,9 +137,13 @@ export function ExcalidrawCanvas({
   }
 
   return (
-    <div className="h-full w-full">
+    <div ref={containerRef} className="h-full w-full">
       <Excalidraw
         excalidrawAPI={(api) => {
+          const currentTheme = api.getAppState()?.theme;
+          if (currentTheme) {
+            document.documentElement.classList.toggle("dark", currentTheme === "dark");
+          }
           onAPIReady(api);
         }}
         initialData={{

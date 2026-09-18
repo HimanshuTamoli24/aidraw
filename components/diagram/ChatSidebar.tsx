@@ -163,9 +163,10 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
     const savedDiag = getSavedDiagram();
     if (savedDiag) setCurrentDiagram(savedDiag);
 
+    // Always default to false. If user wants to delete existing diagram, they explicitly mark it true.
+    setClearOnNew(false);
     try {
-      const savedClearPref = localStorage.getItem(CLEAR_ON_NEW_KEY);
-      if (savedClearPref !== null) setClearOnNew(savedClearPref === "true");
+      localStorage.removeItem(CLEAR_ON_NEW_KEY);
     } catch (e) {
       // ignore
     }
@@ -224,11 +225,6 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
 
   const handleToggleClearOnNew = (checked: boolean) => {
     setClearOnNew(checked);
-    try {
-      localStorage.setItem(CLEAR_ON_NEW_KEY, String(checked));
-    } catch (e) {
-      // ignore
-    }
   };
 
   const handleFitCanvas = () => {
@@ -349,7 +345,7 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
         <button
           onClick={() => setIsOpen(true)}
           title="Open Dia"
-          className="fixed top-4 left-14 z-40 group  bg-white/95 dark:bg-zinc-900/95 text-zinc-900 dark:text-zinc-100 hover:bg-white dark:hover:bg-zinc-900 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 flex items-center gap-2.5 px-3 py-2 rounded-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="fixed top-4 left-14 z-40 group sidebar-font bg-white/95 dark:bg-zinc-900/95 text-zinc-900 dark:text-zinc-100 hover:bg-white dark:hover:bg-zinc-900 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800/80 flex items-center gap-2.5 px-3 py-2 rounded-sm transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           <span className="font-semibold text-xs tracking-tight">Dia</span>
           <ChevronRight className="w-3.5 h-3.5 text-zinc-400 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all" />
@@ -358,7 +354,7 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
 
       {/* Main Sidebar Container */}
       <aside
-        className={`fixed top-0 left-0 bottom-0 z-40 w-96 max-w-[90vw] bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-r border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 bottom-0 z-40 w-[400px] max-w-[90vw] sidebar-font bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-r border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -370,10 +366,10 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <h1 className="font-bold text-sm tracking-tight text-zinc-900 dark:text-zinc-100">
+                <h1 className="font-bold text-[15px] tracking-tight text-zinc-900 dark:text-zinc-100">
                   Dia
                 </h1>
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                   AI Architect
                 </span>
               </div>
@@ -412,15 +408,15 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
         </header>
 
         {/* Message Feed / Prompt Suggestions */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs sidebar-scrollbar">
           {messages.length === 0 ? (
             <div className="py-4 space-y-4">
               <div className="p-3.5 rounded-2xl bg-gradient-to-b from-blue-50/60 to-zinc-50 dark:from-blue-950/20 dark:to-zinc-900/60 border border-blue-100/80 dark:border-blue-900/30 space-y-2">
-                <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-xs">
-                  <Lightbulb className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 font-semibold text-[13px]">
+                  <Lightbulb className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   <span>Interactive Architecture Whiteboard</span>
                 </div>
-                <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-[11px]">
+                <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed text-[12px]">
                   Describe any engineering flow, infrastructure, or technical
                   concept. Dia will create clean, hand-drawn whiteboard diagrams
                   with verified arrow routing and practical command references.
@@ -428,7 +424,7 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
               </div>
 
               <div className="space-y-2">
-                <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider px-1">
+                <span className="text-[11.5px] font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider px-1">
                   Try an example
                 </span>
                 <div className="space-y-1.5">
@@ -439,10 +435,10 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
                       className="w-full text-left p-2.5 rounded-xl bg-zinc-50 hover:bg-zinc-100/90 dark:bg-zinc-900/50 dark:hover:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-800/60 transition-all flex items-center justify-between group"
                     >
                       <div className="pr-2">
-                        <div className="font-medium text-zinc-800 dark:text-zinc-200 text-xs group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        <div className="font-medium text-zinc-800 dark:text-zinc-200 text-[13px] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {item.title}
                         </div>
-                        <div className="text-[10px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-0.5">
+                        <div className="text-[11.5px] text-zinc-500 dark:text-zinc-400 line-clamp-1 mt-0.5">
                           {item.prompt}
                         </div>
                       </div>
@@ -460,7 +456,7 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
                   msg.role === "user" ? "items-end" : "items-start"
                 }`}
               >
-                <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 px-1">
+                <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 px-1">
                   {msg.role === "user" ? (
                     <>
                       <span>You</span>
@@ -479,74 +475,98 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
                 </div>
 
                 <div
-                  className={`p-3 rounded-2xl max-w-[95%] leading-relaxed ${
+                  className={`p-3.5 rounded-2xl max-w-[96%] leading-relaxed ${
                     msg.role === "user"
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm"
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm text-[13px]"
                       : "bg-zinc-100/80 dark:bg-zinc-900/80 text-zinc-800 dark:text-zinc-200 border border-zinc-200/60 dark:border-zinc-800/60"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  {msg.role === "user" ? (
+                    <p className="whitespace-pre-wrap text-[13px]">{msg.content}</p>
+                  ) : (
+                    <div>
+                      {/* Bold prominent Diagram Title if this is a diagram message */}
+                      {msg.diagram && (
+                        <div className="mb-2.5 pb-2 border-b border-zinc-200/60 dark:border-zinc-800/60">
+                          <h3 className="text-[14.5px] font-bold text-zinc-900 dark:text-zinc-50 tracking-tight flex items-center gap-1.5">
+                            <span className="text-blue-500 text-sm">📐</span>
+                            <span>{msg.diagram.title}</span>
+                          </h3>
+                          {msg.diagram.summary && (
+                            <p className="text-[12px] text-zinc-500 dark:text-zinc-400 mt-0.5 font-normal leading-normal">
+                              {msg.diagram.summary}
+                            </p>
+                          )}
+                        </div>
+                      )}
 
-                  {msg.diagram && (
-                    <div className="mt-3 pt-2.5 border-t border-zinc-200/50 dark:border-zinc-800/50 space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] gap-1 px-2 py-0.5"
-                        >
-                          <Layers className="w-3 h-3" />
-                          {msg.diagram.nodes.length} Nodes
-                        </Badge>
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] gap-1 px-2 py-0.5"
-                        >
-                          <ArrowRight className="w-3 h-3" />
-                          {msg.diagram.connections.length} Arrows
-                        </Badge>
-                        {msg.diagram.infoBox && (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] gap-1 px-2 py-0.5 text-blue-600 dark:text-blue-400"
-                          >
-                            <FileCode2 className="w-3 h-3" />
-                            Commands
-                          </Badge>
-                        )}
-                        <Button
-                          size="xs"
-                          variant="outline"
-                          onClick={() => handleReFocus(msg.diagram)}
-                          className="ml-auto text-[10px] h-6 px-2 border-zinc-300 dark:border-zinc-700"
-                        >
-                          <RotateCcw className="w-2.5 h-2.5 mr-1" />
-                          Focus Canvas
-                        </Button>
+                      {/* Natural reading explanation in slightly muted comfortable tone */}
+                      <div className="text-[12.5px] text-zinc-600 dark:text-zinc-300 leading-relaxed font-normal whitespace-pre-wrap">
+                        {msg.content}
                       </div>
 
-                      {/* Inline InfoBox Items */}
-                      {msg.diagram.infoBox &&
-                        msg.diagram.infoBox.items.length > 0 && (
-                          <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 space-y-1">
-                            <div className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1">
-                              <FileCode2 className="w-3 h-3" />
-                              {msg.diagram.infoBox.title || "Quick Reference"}
-                            </div>
-                            <ul className="space-y-0.5">
-                              {msg.diagram.infoBox.items.map(
-                                (item: string, i: number) => (
-                                  <li
-                                    key={i}
-                                    className="text-[10px] text-blue-900 dark:text-blue-200 font-mono leading-relaxed"
-                                  >
-                                    <span className="text-blue-500">•</span>{" "}
-                                    {item}
-                                  </li>
-                                ),
-                              )}
-                            </ul>
+                      {msg.diagram && (
+                        <div className="mt-3 pt-2.5 border-t border-zinc-200/50 dark:border-zinc-800/50 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge
+                              variant="secondary"
+                              className="text-[10.5px] gap-1 px-2 py-0.5 font-medium"
+                            >
+                              <Layers className="w-3 h-3" />
+                              {msg.diagram.nodes.length} Nodes
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className="text-[10.5px] gap-1 px-2 py-0.5 font-medium"
+                            >
+                              <ArrowRight className="w-3 h-3" />
+                              {msg.diagram.connections.length} Arrows
+                            </Badge>
+                            {msg.diagram.infoBox && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10.5px] gap-1 px-2 py-0.5 text-blue-600 dark:text-blue-400 font-medium"
+                              >
+                                <FileCode2 className="w-3 h-3" />
+                                Commands
+                              </Badge>
+                            )}
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              onClick={() => handleReFocus(msg.diagram)}
+                              className="ml-auto text-[10.5px] h-6 px-2.5 border-zinc-300 dark:border-zinc-700 font-medium"
+                            >
+                              <RotateCcw className="w-2.5 h-2.5 mr-1" />
+                              Focus Canvas
+                            </Button>
                           </div>
-                        )}
+
+                          {/* Inline InfoBox Items */}
+                          {msg.diagram.infoBox &&
+                            msg.diagram.infoBox.items.length > 0 && (
+                              <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 space-y-1">
+                                <div className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                                  <FileCode2 className="w-3 h-3" />
+                                  {msg.diagram.infoBox.title || "Quick Reference"}
+                                </div>
+                                <ul className="space-y-0.5">
+                                  {msg.diagram.infoBox.items.map(
+                                    (item: string, i: number) => (
+                                      <li
+                                        key={i}
+                                        className="text-[11px] text-blue-900 dark:text-blue-200 font-mono leading-relaxed"
+                                      >
+                                        <span className="text-blue-500">•</span>{" "}
+                                        {item}
+                                      </li>
+                                    ),
+                                  )}
+                                </ul>
+                              </div>
+                            )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -558,7 +578,7 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
           {isLoading && (
             <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 flex items-center gap-2.5 animate-pulse">
               <Spinner className="w-4 h-4 text-blue-500" />
-              <div className="text-[11px] font-medium">
+              <div className="text-xs font-medium">
                 {statusMessage || "Dia is architecting your diagram..."}
               </div>
             </div>
@@ -569,10 +589,10 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
             <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-300 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
               <div className="space-y-1">
-                <div className="font-semibold text-[11px]">
+                <div className="font-semibold text-xs">
                   Generation Failed
                 </div>
-                <p className="text-[10px] leading-relaxed">{errorMessage}</p>
+                <p className="text-[11px] leading-relaxed">{errorMessage}</p>
                 <Button
                   size="xs"
                   variant="destructive"
@@ -599,7 +619,7 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
                 onChange={(e) => handleToggleClearOnNew(e.target.checked)}
                 className="w-3.5 h-3.5 rounded border-zinc-300 dark:border-zinc-700 text-blue-600 focus:ring-blue-500/30 cursor-pointer accent-blue-600"
               />
-              <span className="text-[11px] text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-200 transition-colors">
+              <span className="text-[11.5px] text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-800 dark:group-hover:text-zinc-200 transition-colors">
                 Remove existing diagram when creating new
               </span>
             </label>
@@ -612,11 +632,11 @@ export function ChatSidebar({ excalidrawAPI }: ChatSidebarProps) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Describe what to design with Dia..."
-              className="resize-none min-h-[70px] max-h-[160px] border-0 bg-transparent text-xs p-2.5 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-zinc-400"
+              className="resize-none min-h-[72px] max-h-[160px] border-0 bg-transparent text-[13px] p-2.5 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-zinc-400 leading-relaxed"
               disabled={isLoading}
             />
             <div className="flex items-center justify-between p-2 pt-0">
-              <span className="text-[10px] text-zinc-400 select-none">
+              <span className="text-[11px] text-zinc-400 select-none">
                 Press ↵ to send • Shift+↵ for newline
               </span>
               <Button

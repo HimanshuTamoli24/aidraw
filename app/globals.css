@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Anybody:ital,wght@0,100..900;1,100..900&family=Karla:ital,wght@0,200..800;1,200..800&family=Manrope:wght@200..800&family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -127,4 +128,28 @@
   html {
     @apply font-sans;
   }
+}
+
+.sidebar-font {
+  font-family: 'Plus Jakarta Sans', 'Manrope', 'Karla', sans-serif;
+}
+
+/* Slim minimal thin scrollbar */
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.25);
+  border-radius: 9999px;
+}
+.sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.45);
+}
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(161, 161, 170, 0.25) transparent;
 }
