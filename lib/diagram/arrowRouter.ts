@@ -182,18 +182,19 @@ export function routeArrow(
   const isHorizontalFlow = exitSide === "right" || exitSide === "left";
   const isVerticalFlow = exitSide === "bottom" || exitSide === "top";
 
-  if (isHorizontalFlow && Math.abs(start.y - end.y) < 20) {
-    const straight: Point[] = [start, end];
+  if (isHorizontalFlow && Math.abs(start.y - end.y) < 35) {
+    const straight: Point[] = [start, { x: end.x, y: start.y }];
     if (!pathCrossesAny(straight, obstacles)) {
       return toRouted(straight);
     }
   }
-  if (isVerticalFlow && Math.abs(start.x - end.x) < 20) {
-    const straight: Point[] = [start, end];
+  if (isVerticalFlow && Math.abs(start.x - end.x) < 35) {
+    const straight: Point[] = [start, { x: start.x, y: end.y }];
     if (!pathCrossesAny(straight, obstacles)) {
       return toRouted(straight);
     }
   }
+
 
   // ── Strategy 2: Z-route ─────────────────────────────────────────────
   let zPath: Point[];

@@ -137,7 +137,7 @@ class ExcalidrawLibraryStore {
       label: {
         text: labelText,
         fontSize: 14,
-        fontFamily: 1,
+        fontFamily: 2, // Helvetica / Clean Sans-serif
         textAlign: "center",
         verticalAlign: "middle",
         strokeColor: "#0f172a",

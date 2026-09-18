@@ -205,9 +205,9 @@ export async function renderDiagramToExcalidraw(
     type: "text",
     x: layout.bounds.minX,
     y: layout.bounds.minY - 110,
-    text: `✏️ ${layout.title}${layout.summary ? `\n— ${layout.summary}` : ""}`,
+    text: `📐 ${layout.title}${layout.summary ? `\n— ${layout.summary}` : ""}`,
     fontSize: 22,
-    fontFamily: 1, // Virgil hand-drawn font
+    fontFamily: 2, // Helvetica / Clean Sans-serif
     strokeColor: "#0f172a",
   });
 
@@ -230,8 +230,8 @@ export async function renderDiagramToExcalidraw(
       roundness: { type: 3 },
       label: {
         text: `[ ${g.title.toUpperCase()} ]`,
-        fontSize: 14,
-        fontFamily: 1,
+        fontSize: 13,
+        fontFamily: 2,
         textAlign: "left",
         verticalAlign: "top",
         strokeColor: "#64748b",
@@ -298,12 +298,12 @@ export async function renderDiagramToExcalidraw(
       strokeColor: colors.stroke,
       fillStyle: "solid",
       strokeWidth: 2,
-      roughness: 1,
+      roughness: 0, // Architectural crisp clean edges
       roundness: { type: 3 },
       label: {
         text: displayText,
-        fontSize: 15,
-        fontFamily: 1,
+        fontSize: 14,
+        fontFamily: 2, // Helvetica / Clean Sans-serif
         textAlign: "center",
         verticalAlign: "middle",
         strokeColor: "#0f172a",
@@ -325,7 +325,7 @@ export async function renderDiagramToExcalidraw(
       height: layout.infoBox.height,
       backgroundColor: "#eff6ff",
       strokeColor: "#3b82f6",
-      strokeWidth: 2.5,
+      strokeWidth: 2,
       strokeStyle: "dashed",
       fillStyle: "solid",
       roughness: 0,
@@ -342,8 +342,8 @@ export async function renderDiagramToExcalidraw(
   }
 
   // ──────────────────────────────────────────────────────────
-  // 5. Connections / Arrows — routed around shapes
-  //    Uses orthogonal routing with obstacle avoidance
+  // 5. Connections / Arrows — routed cleanly around shapes
+  //    Uses sharp orthogonal routing with zero curvature
   // ──────────────────────────────────────────────────────────
 
   // Build a shape map for the arrow router
@@ -395,15 +395,15 @@ export async function renderDiagramToExcalidraw(
       strokeColor,
       strokeWidth: 2,
       strokeStyle,
-      roughness: 1,
-      roundness: { type: 2 },
+      roughness: 0, // Crisp straight lines (no sketch jitter)
+      roundness: null, // No bezier curvature (crisp sharp right-angle elbows)
       startArrowhead,
       endArrowhead,
       label: conn.label
         ? {
             text: conn.label,
-            fontSize: 13,
-            fontFamily: 1,
+            fontSize: 12,
+            fontFamily: 2, // Helvetica / Clean Sans-serif
             strokeColor: "#1e293b",
           }
         : undefined,
@@ -425,18 +425,19 @@ export async function renderDiagramToExcalidraw(
       strokeColor: "#ca8a04",
       fillStyle: "solid",
       strokeWidth: 1.5,
-      roughness: 1,
+      roughness: 0,
       roundness: { type: 3 },
       label: {
         text: `💡 ${ann.text}`,
-        fontSize: 13,
-        fontFamily: 1,
+        fontSize: 12,
+        fontFamily: 2, // Helvetica / Clean Sans-serif
         textAlign: "left",
         verticalAlign: "middle",
         strokeColor: "#713f12",
       },
     });
   });
+
 
   // ──────────────────────────────────────────────────────────
   // Convert skeletons to valid Excalidraw elements

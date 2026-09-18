@@ -21,14 +21,28 @@ const Excalidraw = dynamic(
 
 interface ExcalidrawCanvasProps {
   onAPIReady: (api: ExcalidrawImperativeAPI) => void;
+  initialLibraryItems?: any[];
+  onLibraryChange?: (libraryItems: any) => void;
 }
 
-export function ExcalidrawCanvas({ onAPIReady }: ExcalidrawCanvasProps) {
+export function ExcalidrawCanvas({
+  onAPIReady,
+  initialLibraryItems,
+  onLibraryChange,
+}: ExcalidrawCanvasProps) {
   return (
     <div className="h-full w-full">
       <Excalidraw
         excalidrawAPI={(api) => {
           onAPIReady(api);
+        }}
+        initialData={
+          initialLibraryItems && initialLibraryItems.length > 0
+            ? { libraryItems: initialLibraryItems }
+            : undefined
+        }
+        onLibraryChange={(items) => {
+          onLibraryChange?.(items);
         }}
         UIOptions={{
           canvasActions: {
@@ -42,3 +56,4 @@ export function ExcalidrawCanvas({ onAPIReady }: ExcalidrawCanvasProps) {
     </div>
   );
 }
+

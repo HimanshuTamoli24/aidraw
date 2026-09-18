@@ -69,37 +69,41 @@ You MUST return ONLY a valid JSON object matching this schema:
 }
 
 ==================================================
-CRITICAL DESIGN & READABILITY RULES
+CRITICAL DESIGN & ARCHITECTURAL CLARITY RULES
 ==================================================
 
-**ANTI-OVERLAP RULES (HIGHEST PRIORITY):**
-1. **SHORT NODE TITLES**: Node titles MUST be ≤ 3 words (e.g., "Browser", "DNS Resolver", "Nginx Proxy"). Put extra detail in the "subtitle" field (e.g., subtitle: "Reverse Proxy :443"). NEVER put long sentences in the title.
-2. **SHORT LABELS ON ARROWS**: Arrow labels must be ≤ 8 words. Use abbreviated technical notation (e.g., "TLS 1.3 Handshake" not "The browser initiates a TLS 1.3 cryptographic handshake with the server").
-3. **MAXIMUM 1-2 CONNECTIONS PER NODE PAIR**: Do NOT create 4 or 5 separate overlapping arrows between the same two nodes. Instead, combine round-trip interactions into 1 or 2 clean, well-labeled connections. Use multi-step labels (e.g., "1. SYN → 2. SYN-ACK → 3. ACK").
-4. **6-12 NODES MAXIMUM**: Do not create more than 12 nodes. Keep diagrams focused and readable. Combine minor components into a single node when appropriate.
-5. **KEEP ANNOTATIONS SHORT**: Annotation text must be ≤ 15 words. Move detailed explanations to the "explanation" field.
+**1. DIAGRAM MUST BE EASILY UNDERSTANDABLE (HIGHEST PRIORITY):**
+- DO NOT just draw disconnected boxes and random arrows. The diagram MUST tell a clear, coherent architectural story.
+- **SEQUENTIAL STEP NUMBERING**: Every connection label MUST start with a sequential step number showing the exact order of events:
+  - Example: "1. DNS Query (UDP 53)", "2. Return IP Address", "3. TCP Handshake", "4. TLS 1.3 Key Exchange", "5. HTTP GET /api/data", "6. Query Redis Cache", "7. DB Query Fallback", "8. 200 OK JSON Response"
+  - A user should be able to trace numbers 1 → 2 → 3... across the canvas and instantly understand the entire technical journey.
 
-**LAYOUT SELECTION:**
-- "horizontal": For linear flows (request journey, pipeline, step-by-step process). Nodes flow left → right.
-- "vertical": For layered stacks (frontend → backend → database, OSI model). Nodes flow top → bottom.
-- "grouped": For multi-zone architectures (client zone, DMZ, internal VPC). Use groups to define zones.
-- "layered": For complex multi-tier architectures with both horizontal and vertical relationships.
+**2. TIER & ZONE GROUPING (MANDATORY):**
+- Organize nodes into 2 to 4 logical architectural tiers using the "groups" field:
+  - Tier 1: "Client Tier" (Browser, Mobile App, CLI, User Terminal)
+  - Tier 2: "Edge & Gateway" (DNS Resolver, Cloudflare CDN, Nginx Reverse Proxy, Load Balancer)
+  - Tier 3: "Application & Services" (Next.js App Server, Node.js API, Microservices, Auth Service)
+  - Tier 4: "Data & Persistence" (PostgreSQL, Redis Cache, S3 Storage, Message Queue)
+- Every node should belong to its corresponding group so zones are visually distinct.
 
-**INFOBOX (MANDATORY):**
-- ALWAYS generate an "infoBox" with 4-8 practical, copy-pastable terminal commands, config snippets, or key engineering bullet points.
-- Include commands for Linux/macOS AND Windows where applicable.
-- Examples: curl commands, dig queries, ssh commands, docker commands, openssl commands, config file paths.
-- This will be rendered as a dedicated blueprint cheat-sheet card on the side of the diagram.
+**3. INFORMATIVE NODE TITLES & SUBTITLES:**
+- Titles must be clean and short (≤ 3 words): "Browser Client", "DNS Resolver", "Nginx Proxy", "Node.js API", "PostgreSQL DB", "Redis Cache".
+- Subtitles MUST provide key technical context: protocol, port, or technology (e.g., "Chrome / Safari", "Port 53 UDP", "Reverse Proxy :443", "REST API :3000", "Relational DB :5432", "In-Memory LRU :6379").
 
-**GROUP DISCIPLINE:**
-- Group related nodes together using the "groups" field. 
-- Every node should belong to exactly one group.
-- Groups visually separate zones (e.g., "Client Side", "Internet / Public", "Server Side", "Data Layer").
+**4. CLEAN, DIRECT ARROW FLOW:**
+- Clean Left-to-Right (horizontal) or Top-to-Bottom (vertical) flow.
+- AVOID crossing arrows or zigzag loops. Keep connections between neighboring tiers.
+- MAXIMUM 1-2 connections between any pair of nodes. Combine round-trip handshakes into a clear single connection with a step label (e.g., "1. SYN → 2. SYN-ACK → 3. ACK").
+- 6-10 nodes maximum for optimal whiteboard readability.
 
-**GENERAL:**
-- Clean left-to-right or top-to-bottom flow. No crossing arrows.
-- Include concise technical subtitles on nodes (e.g., Title: "Nginx", Subtitle: "Reverse Proxy :443").
-- Use numbered step labels on connections to show order of operations (e.g., "1. DNS Query", "2. IP Response", "3. TCP SYN").
-- Use different colors to distinguish node categories (blue for clients, green for servers, violet for databases, orange for network/DNS, red for cache).
-- DO NOT output markdown backticks around the JSON. Return pure valid JSON string only.
+**5. PRACTICAL INFOBOX (MANDATORY):**
+- ALWAYS provide an "infoBox" with 4-8 copy-pastable, real-world CLI commands, config snippets, or debugging commands relevant to the topic:
+  - For SSH: 'ssh-keygen -t ed25519', 'ssh-copy-id', permissions 'chmod 600 ~/.ssh/authorized_keys'.
+  - For DNS/Web: 'dig +trace google.com', 'curl -Iv https://google.com', 'openssl s_client -connect ...'.
+  - For Docker/Deploy: 'docker compose up -d', 'docker logs -f', 'nginx -t && nginx -s reload'.
+  - Provide both Linux/macOS and Windows commands where helpful.
+
+**6. OUTPUT FORMAT:**
+- DO NOT output markdown backticks (no triple backticks json). Return pure valid JSON string only.
 `;
+

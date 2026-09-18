@@ -1,16 +1,56 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { ExcalidrawCanvas } from "@/components/diagram/ExcalidrawCanvas";
 import { ChatSidebar } from "@/components/diagram/ChatSidebar";
 import { libraryStore } from "@/lib/diagram/library/libraryManager";
 
+const STORAGE_KEY = "excalidraw-custom-library";
 const DEFAULT_LIBRARY_URL =
   "https://libraries.excalidraw.com/libraries/youritjang/software-architecture.excalidrawlib";
 
+function getSavedLibraryItems(): any[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn("[Library] Failed to read saved library from localStorage:", e);
+  }
+  return [];
+}
+
 export default function Home() {
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawImperativeAPI | null>(null);
+  const [initialLibraryItems, setInitialLibraryItems] = useState<any[]>([]);
+  const hasLoadedInitial = useRef(false);
+
+  // Load saved library items from localStorage once on client mount
+  useEffect(() => {
+    const saved = getSavedLibraryItems();
+    if (saved.length > 0) {
+      setInitialLibraryItems(saved);
+      libraryStore.registerLibraryItems(saved);
+      console.log(`[Library] Restored ${saved.length} library items from localStorage.`);
+    }
+  }, []);
+
+  // Save changes whenever user adds/removes library items in Excalidraw UI
+  const handleLibraryChange = useCallback((items: readonly any[]) => {
+    if (!items || items.length === 0) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      libraryStore.registerLibraryItems(items as any[]);
+    } catch (e) {
+      console.warn("[Library] Failed to save library change to localStorage:", e);
+    }
+  }, []);
 
   useEffect(() => {
     if (!excalidrawAPI) return;
@@ -20,49 +60,107 @@ export default function Home() {
       try {
         const response = await fetch(`/api/library?url=${encodeURIComponent(url)}`);
         if (!response.ok) {
-          throw new Error(`Failed to fetch Excalidraw library from ${url}`);
+          throw new Error(`Failed to fetch library from ${url} (${response.status})`);
         }
 
-        const library = await response.json();
-        const libraryItems = library.libraryItems || (Array.isArray(library) ? library : []);
+        const data = await response.json();
+        const rawItems =
+          data.libraryItems ||
+          data.library ||
+          (Array.isArray(data) ? data : []);
 
-        if (libraryItems.length > 0) {
-          // 1. Update Excalidraw's Library Panel UI
-          excalidrawAPI.updateLibrary({
-            libraryItems,
+        if (Array.isArray(rawItems) && rawItems.length > 0) {
+          // Normalize into standard v2 LibraryItem array
+          const normalizedItems = rawItems.map((item: any, idx: number) => {
+            if (Array.isArray(item)) {
+              return {
+                id: `lib-item-${idx}-${Date.now()}`,
+                status: "published" as const,
+                elements: item,
+                created: Date.now(),
+              };
+            }
+            if (item && item.elements) {
+              return {
+                id: item.id || `lib-item-${idx}-${Date.now()}`,
+                status: item.status || "published",
+                elements: item.elements,
+                created: item.created || Date.now(),
+                name: item.name,
+              };
+            }
+            return item;
+          });
+
+          // 1. Update Excalidraw's Library Panel UI & open panel
+          await excalidrawAPI.updateLibrary({
+            libraryItems: normalizedItems,
             merge: true,
+            openLibraryMenu: true,
+            defaultStatus: "published",
           });
 
           // 2. Register items with the AI Diagram Generator Store
-          libraryStore.registerLibraryItems(libraryItems);
-          console.log(`[Excalidraw] Loaded ${libraryItems.length} library items for AI generator.`);
+          libraryStore.registerLibraryItems(normalizedItems);
+
+          // 3. Persist to localStorage so items survive page reload
+          const existing = getSavedLibraryItems();
+          const combined = [...existing, ...normalizedItems];
+          const unique = Array.from(new Map(combined.map((it) => [it.id || JSON.stringify(it.elements?.[0]?.id), it])).values());
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(unique));
+
+          console.log(`[Excalidraw] Loaded and persisted ${normalizedItems.length} library items.`);
         }
       } catch (error) {
         console.error("Failed to load Excalidraw library:", error);
       }
     };
 
-    // 1. Check if URL hash contains #addLibrary=...
-    const handleHashLibrary = () => {
+    // Check if URL hash or search contains #addLibrary=... or ?addLibrary=...
+    const checkAndLoadUrlLibrary = () => {
       if (typeof window === "undefined") return;
-      const hash = window.location.hash;
-      if (hash && hash.includes("addLibrary=")) {
-        const match = hash.match(/addLibrary=([^&]+)/);
-        if (match && match[1]) {
-          const libraryUrl = decodeURIComponent(match[1]);
-          loadLibraryFromUrl(libraryUrl);
-        }
+
+      let libraryUrl: string | null = null;
+
+      // Check hash
+      if (window.location.hash.includes("addLibrary=")) {
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        libraryUrl = hashParams.get("addLibrary");
+      }
+
+      // Check search query fallback
+      if (!libraryUrl && window.location.search.includes("addLibrary=")) {
+        const searchParams = new URLSearchParams(window.location.search);
+        libraryUrl = searchParams.get("addLibrary");
+      }
+
+      if (libraryUrl) {
+        loadLibraryFromUrl(libraryUrl).then(() => {
+          // Clean the hash from the browser URL so it doesn't re-trigger
+          try {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } catch (e) {
+            // ignore
+          }
+        });
       }
     };
 
-    // 2. Pre-load default Software Architecture Library
-    loadLibraryFromUrl(DEFAULT_LIBRARY_URL);
+    // Initial check
+    checkAndLoadUrlLibrary();
 
-    // 3. Listen for dynamic #addLibrary= URL imports
-    handleHashLibrary();
-    window.addEventListener("hashchange", handleHashLibrary);
+    // If localStorage was empty, pre-load default Software Architecture Library
+    if (!hasLoadedInitial.current) {
+      hasLoadedInitial.current = true;
+      const saved = getSavedLibraryItems();
+      if (saved.length === 0) {
+        loadLibraryFromUrl(DEFAULT_LIBRARY_URL);
+      }
+    }
+
+    window.addEventListener("hashchange", checkAndLoadUrlLibrary);
     return () => {
-      window.removeEventListener("hashchange", handleHashLibrary);
+      window.removeEventListener("hashchange", checkAndLoadUrlLibrary);
     };
   }, [excalidrawAPI]);
 
@@ -74,6 +172,8 @@ export default function Home() {
           onAPIReady={(api) => {
             setExcalidrawAPI(api);
           }}
+          initialLibraryItems={initialLibraryItems}
+          onLibraryChange={handleLibraryChange}
         />
       </div>
 
@@ -82,3 +182,4 @@ export default function Home() {
     </main>
   );
 }
+
